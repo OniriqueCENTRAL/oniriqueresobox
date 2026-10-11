@@ -67,6 +67,19 @@ jobs:
           lipo -info "${{ matrix.artefacts }}/VST3/ResoBox.vst3/Contents/MacOS/ResoBox"
           lipo -info "${{ matrix.artefacts }}/AU/ResoBox.component/Contents/MacOS/ResoBox"
 
+      # Apple's own validator loads the Audio Unit the way a host does and
+      # puts it through its paces. The build has just installed it for this
+      # user. A failure is reported, not fatal: the plugins are still wanted.
+      - name: Validate the Audio Unit
+        if: matrix.name == 'macOS'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          ls ~/Library/Audio/Plug-Ins/Components/ 2>&1 | tee auval.log
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          auval -v aufx Rsbx Onrq 2>&1 | tee -a auval.log
+
       # Zipped with ditto on macOS so the bundles keep their symlinks and
       # ad-hoc signature, which upload-artifact's own zip would flatten.
       - name: Package (macOS)
@@ -97,9 +110,9 @@ jobs:
         run: |
           mkdir logs
           echo "${{ job.status }} - ${{ github.sha }} - $(date -u +%FT%TZ)" > logs/status.txt
-          for f in configure.log build.log test.log; do
+          for f in configure.log build.log test.log auval.log; do
             [ -f "$f" ] || continue
-            grep -n -E "error[: ]|Error:|FAIL|\*\* BUILD" "$f" | head -200 > "logs/${f%.log}-errors.txt" || true
+            grep -n -E "error[: ]|Error:|FAIL|\*\* BUILD|AU VALIDATION|PASS" "$f" | head -200 > "logs/${f%.log}-errors.txt" || true
             tail -n 150 "$f" > "logs/${f%.log}-tail.txt"
           done
           ls dist > logs/artefacts.txt 2>/dev/null || true
