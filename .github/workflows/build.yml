@@ -2,8 +2,13 @@ name: Build
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
+
+# The last step leaves the logs of the run on a branch of their own.
+permissions:
+  contents: write
 
 env:
   JUCE_TAG: 9.0.3
@@ -43,10 +48,16 @@ jobs:
           fi
 
       - name: Build
-        run: cmake --build build --config Release --parallel
+        shell: bash
+        run: |
+          set -o pipefail
+          cmake --build build --config Release --parallel 2>&1 | tee build.log
 
       - name: Test
-        run: ctest --test-dir build -C Release --output-on-failure
+        shell: bash
+        run: |
+          set -o pipefail
+          ctest --test-dir build -C Release --output-on-failure 2>&1 | tee test.log
 
       - name: Check the macOS binaries are universal
         if: matrix.name == 'macOS'
@@ -75,3 +86,26 @@ jobs:
           name: ResoBox-${{ matrix.name }}
           path: dist/*
           if-no-files-found: error
+
+      # What happened, kept where it can be read without opening the run: the
+      # errors, and the end of each log, on a branch that holds nothing else.
+      - name: Leave the logs on a branch
+        if: always()
+        shell: bash
+        run: |
+          mkdir logs
+          echo "${{ job.status }} - ${{ github.sha }} - $(date -u +%FT%TZ)" > logs/status.txt
+          for f in build.log test.log; do
+            [ -f "$f" ] || continue
+            grep -n -E "error[: ]|Error:|FAIL|\*\* BUILD" "$f" | head -200 > "logs/${f%.log}-errors.txt" || true
+            tail -n 150 "$f" > "logs/${f%.log}-tail.txt"
+          done
+          ls dist > logs/artefacts.txt 2>/dev/null || true
+          cd logs
+          git init -q
+          git config user.name "build"
+          git config user.email "build@users.noreply.github.com"
+          git checkout -q -b "ci-logs-${{ matrix.name }}"
+          git add -A
+          git commit -q -m "Logs of ${{ github.sha }}"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" "HEAD:ci-logs-${{ matrix.name }}"
