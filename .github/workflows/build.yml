@@ -111,3 +111,19 @@ jobs:
           git add -A
           git commit -q -m "Logs of ${{ github.sha }}"
           git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" "HEAD:ci-logs-${{ matrix.name }}"
+
+      # The built plugins themselves, on a branch that holds nothing else and
+      # is replaced at every run: a way to fetch them with nothing but git.
+      - name: Leave the plugins on a branch
+        if: success()
+        shell: bash
+        run: |
+          cd dist
+          echo "${{ github.sha }} - $(date -u +%FT%TZ)" > BUILD.txt
+          git init -q
+          git config user.name "build"
+          git config user.email "build@users.noreply.github.com"
+          git checkout -q -b "ci-build-${{ matrix.name }}"
+          git add -A
+          git commit -q -m "Build of ${{ github.sha }}"
+          git push -q --force "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" "HEAD:ci-build-${{ matrix.name }}"
