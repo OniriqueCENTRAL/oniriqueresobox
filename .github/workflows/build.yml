@@ -25,7 +25,6 @@ jobs:
             artefacts: build/OniriqueResoBox_artefacts/Release
           - name: Windows
             os: windows-latest
-            generator: Visual Studio 17 2022
             artefacts: build/OniriqueResoBox_artefacts/Release
 
     name: ${{ matrix.name }}
@@ -38,13 +37,16 @@ jobs:
         shell: bash
         run: git clone --depth 1 --branch "$JUCE_TAG" https://github.com/juce-framework/JUCE.git
 
+      # No generator is named on Windows: whichever Visual Studio the runner
+      # carries is the one to use, and naming last year's fails on a new image.
       - name: Configure
         shell: bash
         run: |
+          set -o pipefail
           if [ "${{ matrix.name }}" = "Windows" ]; then
-            cmake -B build -G "${{ matrix.generator }}" -A x64
+            cmake -B build -A x64 2>&1 | tee configure.log
           else
-            cmake -B build -G "${{ matrix.generator }}"
+            cmake -B build -G "${{ matrix.generator }}" 2>&1 | tee configure.log
           fi
 
       - name: Build
@@ -95,7 +97,7 @@ jobs:
         run: |
           mkdir logs
           echo "${{ job.status }} - ${{ github.sha }} - $(date -u +%FT%TZ)" > logs/status.txt
-          for f in build.log test.log; do
+          for f in configure.log build.log test.log; do
             [ -f "$f" ] || continue
             grep -n -E "error[: ]|Error:|FAIL|\*\* BUILD" "$f" | head -200 > "logs/${f%.log}-errors.txt" || true
             tail -n 150 "$f" > "logs/${f%.log}-tail.txt"
