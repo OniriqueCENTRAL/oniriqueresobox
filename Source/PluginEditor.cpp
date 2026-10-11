@@ -234,6 +234,11 @@ ResoBoxEditor::ResoBoxEditor (ResoBoxProcessor& p)
     setSize (1290, 740);
 
     timerCallback();
+    // The licence pill and the activation page, over everything else.
+    licenseOverlay = std::make_unique<license::Overlay> ("ONIRIQUE RESOBOX", processor.license);
+    addAndMakeVisible (*licenseOverlay);
+    resized();
+
     startTimerHz (30);
 }
 
@@ -540,6 +545,9 @@ void ResoBoxEditor::paint (Graphics& g)
 
 void ResoBoxEditor::resized()
 {
+    if (licenseOverlay != nullptr)
+        licenseOverlay->fit (getLocalBounds(), 1.0f, { 276, 100, 248, 26 });
+
     auto bounds = getLocalBounds();
     auto header = bounds.removeFromTop (kHeaderHeight);
 

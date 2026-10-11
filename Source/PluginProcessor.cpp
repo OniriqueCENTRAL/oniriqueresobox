@@ -378,6 +378,9 @@ rb::Settings ResoBoxProcessor::readSettings() const noexcept
 
 void ResoBoxProcessor::prepareToPlay (double sampleRate, int)
 {
+    // Many hosts call this just before a bounce: the licence is read again then.
+    license.refresh();
+
     const auto settings = readSettings();
 
     suppressor.setSettings (settings);
@@ -458,6 +461,9 @@ void ResoBoxProcessor::processBlock (AudioBuffer<float>& buffer, MidiBuffer&)
             visualFrame = suppressor.getFrameCount();
         }
     }
+
+    // Without a licence the output is replaced by noise: see License/DemoNoise.h.
+    license.process (buffer, getSampleRate(), isNonRealtime());
 }
 
 bool ResoBoxProcessor::getVisual (std::vector<float>& inputDb, std::vector<float>& outputDb,

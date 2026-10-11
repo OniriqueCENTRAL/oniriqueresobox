@@ -3,6 +3,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "License/LicenseGuard.h"
 #include "dsp/ResonanceSuppressor.h"
 
 namespace onirique
@@ -123,6 +124,12 @@ private:
     double visualBinHz = 0.0;
     uint32_t visualFrame = 0;
 
+public:
+    /** The ONIRIQUE licence of this plugin on this machine: bought, on trial, or
+        neither. See License/LicenseGuard.h. */
+    license::Guard license { "onirique-resobox" };
+
+private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ResoBoxProcessor)
 };
 

@@ -3,6 +3,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "License/LicenseOverlay.h"
 #include "PluginProcessor.h"
 #include "ui/Controls.h"
 #include "ui/SpectrumDisplay.h"
@@ -118,6 +119,9 @@ private:
     /** When the editor opened: the light that runs along the foot of the
         header, and the stars beside the name, keep time from here. */
     double openedAt = Time::getMillisecondCounterHiRes();
+
+    // Last, so that it is destroyed first and drawn over everything else.
+    std::unique_ptr<license::Overlay> licenseOverlay;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ResoBoxEditor)
 };
