@@ -1,35 +1,25 @@
 #pragma once
 
+#include "LicenseCore.h"
+
 #include <juce_core/juce_core.h>
 
 //==============================================================================
-//  Licence ONIRIQUE : lecture et vérification du fichier écrit par l'application
-//  ONIRIQUE CENTRAL quand le plugin est activé sur ce PC
-//  (C:\ProgramData\Onirique\Licenses\<plugin>.lic sous Windows,
-//  /Users/Shared/Onirique/Licenses/<plugin>.lic sur Mac).
-//
-//  Le fichier est signé par le serveur (Ed25519). Le plugin n'embarque que la
-//  clé publique : il peut vérifier une licence, pas en fabriquer une. Tout se
-//  fait hors ligne.
-//
-//  Ce dossier est le même pour tous les plugins ONIRIQUE (voir README.md) : seul
-//  l'identifiant du plugin change.
+//  La licence ONIRIQUE vue d'un plugin JUCE : les mêmes vérifications que
+//  LicenseCore.h, avec les types de JUCE.
 //==============================================================================
 namespace onirique::license
 {
-
-enum class State
-{
-    unlicensed, // pas de licence valable sur ce PC : bruit blanc à l'export, et par salves à l'écoute
-    trial,      // essai gratuit en cours : écoute intacte, bruit blanc à l'export
-    licensed    // plugin acheté ou abonnement actif
-};
 
 struct Status
 {
     State state = State::unlicensed;
     juce::String email;        // compte auquel la licence appartient
     juce::int64 expiresAt = 0; // millisecondes depuis 1970 ; 0 = sans limite
+
+    Status() = default;
+    Status (const core::Status& status)
+        : state (status.state), email (juce::String::fromUTF8 (status.email.c_str())), expiresAt ((juce::int64) status.expiresAt) {}
 
     /** Seul un plugin acheté exporte proprement : en essai ou en démo, l'export produit un bruit blanc. */
     bool exportsClean() const noexcept { return state == State::licensed; }
@@ -38,11 +28,10 @@ struct Status
     int daysLeft() const noexcept;
 };
 
-/** Empreinte de ce PC, calculée comme dans ONIRIQUE CENTRAL :
-    40 premiers caractères hexadécimaux de SHA-256 ("onirique:" + MachineGuid en minuscules). */
+/** Empreinte de cette machine, calculée comme dans ONIRIQUE CENTRAL. */
 juce::String machineId();
 
-/** Le fichier de licence de ce plugin sur ce PC. */
+/** Le fichier de licence de ce plugin sur cette machine. */
 juce::File licenseFile (const juce::String& productSlug);
 
 /** Lit la licence de ce plugin et la vérifie avec la clé publique ONIRIQUE embarquée. */

@@ -9,12 +9,12 @@ namespace onirique::license
 //==============================================================================
 /** Ce que le plugin montre de sa licence, par-dessus son interface :
 
-    - une pastille « MODE DÉMO · ACTIVATION » (ou « ESSAI · 5 J ») dans l'en-tête, tant que
-      le plugin n'est pas acheté ;
-    - la page d'activation, ouverte d'office quand le plugin n'est pas activé, puis à la
+    - une pastille : « MODE DÉMO · ACTIVATION », « ESSAI · 5 J · ACTIVATION », ou le témoin
+      « ACTIVÉ » quand le plugin est acheté ;
+    - la page de la licence, ouverte d'office quand le plugin n'est pas activé, puis à la
       demande en cliquant la pastille.
 
-    Rien n'est affiché quand le plugin est acheté. S'ajoute en dernier à l'interface
+    S'ajoute en dernier à l'interface
     (addAndMakeVisible), puis se place avec fit() dans resized() ; ne capte la souris que sur
     la pastille et sur la page ouverte. */
 class Overlay final : public juce::Component,

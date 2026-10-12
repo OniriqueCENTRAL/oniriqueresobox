@@ -14,11 +14,13 @@ class Overlay::Pill final : public juce::Button
 public:
     Pill() : juce::Button ("Activation") { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
 
-    void setLabel (const juce::String& newLabel)
+    /** `isActive` : plugin acheté. La pastille devient un simple témoin, vert et discret. */
+    void setLabel (const juce::String& newLabel, bool isActive)
     {
-        if (label != newLabel)
+        if (label != newLabel || active != isActive)
         {
             label = newLabel;
+            active = isActive;
             setTitle (newLabel);
             repaint();
         }
@@ -27,18 +29,20 @@ public:
     void paintButton (juce::Graphics& g, bool over, bool down) override
     {
         const auto area = getLocalBounds().toFloat().reduced (0.5f);
-        g.setColour (palette::ember.withAlpha (down ? 0.42f : over ? 0.3f : 0.18f));
+        const auto tint = active ? palette::active : palette::ember;
+        g.setColour (active ? juce::Colours::black.withAlpha (down ? 0.6f : over ? 0.5f : 0.38f)
+                            : tint.withAlpha (down ? 0.42f : over ? 0.3f : 0.18f));
         g.fillRoundedRectangle (area, area.getHeight() * 0.5f);
-        g.setColour (palette::ember.withAlpha (0.75f));
+        g.setColour (tint.withAlpha (active ? (over ? 0.6f : 0.35f) : 0.75f));
         g.drawRoundedRectangle (area, area.getHeight() * 0.5f, 1.0f);
 
         const juce::Point<float> led (area.getX() + 14.0f, area.getCentreY());
-        g.setColour (palette::ember.withAlpha (0.35f));
+        g.setColour (tint.withAlpha (0.35f));
         g.fillEllipse (juce::Rectangle<float> (9.0f, 9.0f).withCentre (led));
-        g.setColour (palette::emberHot);
+        g.setColour (active ? palette::active : palette::emberHot);
         g.fillEllipse (juce::Rectangle<float> (5.0f, 5.0f).withCentre (led));
 
-        g.setColour (palette::bone);
+        g.setColour (active ? palette::bone.withAlpha (0.85f) : palette::bone);
         g.setFont (fonts->monoBoldFont (10.0f, 0.14f));
         g.drawText (label, getLocalBounds().withTrimmedLeft (24).withTrimmedRight (8), juce::Justification::centred, false);
     }
@@ -46,6 +50,7 @@ public:
 private:
     theme::Fonts fonts;
     juce::String label;
+    bool active = false;
 };
 
 //==============================================================================
@@ -104,18 +109,7 @@ Overlay::Overlay (juce::String productName, Guard& licenseGuard)
         update();
     };
 
-    openCentral->onClick = []
-    {
-        // L'application installée pour cet utilisateur ; à défaut, la page de téléchargement.
-       #if JUCE_MAC
-        const juce::File app ("/Applications/ONIRIQUE CENTRAL.app");
-       #else
-        const auto app = juce::File::getSpecialLocation (juce::File::userHomeDirectory)
-                             .getChildFile ("AppData/Local/Programs/ONIRIQUE CENTRAL/ONIRIQUE CENTRAL.exe");
-       #endif
-        if (! (app.exists() && app.startAsProcess()))
-            juce::URL ("https://onirique.store/#telechargement").launchInDefaultBrowser();
-    };
+    openCentral->onClick = [] { core::openCentral(); };
 
     addChildComponent (*pill);
     addChildComponent (*openCentral);
@@ -145,7 +139,7 @@ juce::Rectangle<int> Overlay::cardBounds() const
 
 void Overlay::setPageOpen (bool shouldBeOpen)
 {
-    pageOpen = shouldBeOpen && status.state != State::licensed;
+    pageOpen = shouldBeOpen;
     openCentral->setVisible (pageOpen);
     recheck->setVisible (pageOpen);
     dismiss->setVisible (pageOpen);
@@ -157,11 +151,13 @@ void Overlay::update()
     const auto previous = status.state;
     status = guard.status();
 
-    const bool demo = status.state != State::licensed;
-    pill->setVisible (demo);
-    pill->setLabel (status.state == State::trial ? fr ("ESSAI · ") + juce::String (status.daysLeft()) + fr (" J · ACTIVATION")
-                                                 : fr ("MODE DÉMO · ACTIVATION"));
-    dismiss->setName (status.state == State::trial ? "FERMER" : fr ("CONTINUER EN DÉMO"));
+    const bool licensed = status.state == State::licensed;
+    pill->setVisible (true);
+    pill->setLabel (licensed ? fr ("ACTIVÉ")
+                             : status.state == State::trial ? fr ("ESSAI · ") + juce::String (status.daysLeft()) + fr (" J · ACTIVATION")
+                                                            : fr ("MODE DÉMO · ACTIVATION"),
+                    licensed);
+    dismiss->setName (status.state == State::unlicensed ? fr ("CONTINUER EN DÉMO") : juce::String ("FERMER"));
 
     // Non activé : la page s'ouvre d'elle-même à la première ouverture de l'interface.
     if (status.state == State::unlicensed && ! openedOnce)
@@ -170,16 +166,21 @@ void Overlay::update()
         setPageOpen (true);
     }
 
-    if (! demo && pageOpen)
-        setPageOpen (false);
-
     if (previous != status.state)
+    {
+        // Le plugin vient d'être activé : la page d'activation n'a plus lieu d'être.
+        if (licensed && pageOpen)
+            setPageOpen (false);
+
+        resized();
         repaint();
+    }
 }
 
 void Overlay::resized()
 {
-    pill->setBounds (pillBounds);
+    // Plugin acheté : le témoin « ACTIVÉ » est plus court, au milieu de l'emplacement de la pastille.
+    pill->setBounds (status.state == State::licensed ? pillBounds.withSizeKeepingCentre (104, pillBounds.getHeight()) : pillBounds);
 
     const auto card = cardBounds().reduced (34, 0);
     const int y = cardBounds().getBottom() - 34 - 38;
@@ -191,7 +192,7 @@ void Overlay::resized()
 bool Overlay::hitTest (int x, int y)
 {
     // Page ouverte : tout le plugin est derrière le voile. Sinon, seule la pastille réagit.
-    return pageOpen || (pill->isVisible() && pillBounds.contains (x, y));
+    return pageOpen || pill->getBounds().contains (x, y);
 }
 
 void Overlay::paint (juce::Graphics& g)
@@ -208,19 +209,27 @@ void Overlay::paint (juce::Graphics& g)
     g.drawRoundedRectangle (card.reduced (0.5f), 18.0f, 1.0f);
 
     const bool trial = status.state == State::trial;
+    const bool licensed = status.state == State::licensed;
     const auto inner = cardBounds().reduced (34, 0);
+    const auto account = status.email.isNotEmpty() ? fr (" sur le compte ") + status.email : juce::String();
 
-    theme::drawEyebrow (g, *fonts, trial ? "ESSAI GRATUIT" : fr ("MODE DÉMO"), (float) inner.getX(), card.getY() + 42.0f);
+    theme::drawEyebrow (g, *fonts, licensed ? "LICENCE" : trial ? "ESSAI GRATUIT" : fr ("MODE DÉMO"), (float) inner.getX(), card.getY() + 42.0f);
 
     g.setColour (palette::mist);
     g.setFont (fonts->displayFont (25.0f, 0.02f));
-    const auto title = trial ? juce::String (status.daysLeft()) + (status.daysLeft() > 1 ? " jours restants" : " jour restant")
+    const auto title = licensed ? fr ("Plugin activé")
+                     : trial ? juce::String (status.daysLeft()) + (status.daysLeft() > 1 ? " jours restants" : " jour restant")
                              : juce::String ("Activation requise");
     g.drawText (title, inner.withY ((int) card.getY() + 62).withHeight (36), juce::Justification::centredLeft, false);
 
-    const auto text = trial
-        ? fr ("Essai de ") + product + fr (" en cours")
-              + (status.email.isNotEmpty() ? fr (" sur le compte ") + status.email : juce::String()) + fr (".\n\n")
+    const auto text = licensed
+        ? product + fr (" est activé sur ce PC") + account + fr (".\n\n")
+              + (status.expiresAt > 0
+                     ? fr ("Licence d'abonnement : ONIRIQUE CENTRAL la renouvelle à chaque lancement tant que l'abonnement court.\n\n")
+                     : juce::String())
+              + fr ("Vos licences et vos machines activées se gèrent dans ONIRIQUE CENTRAL.")
+        : trial
+        ? fr ("Essai de ") + product + fr (" en cours") + account + fr (".\n\n")
               + fr ("Le plugin fonctionne normalement en temps réel. Tout export reste remplacé par un bruit blanc tant que le plugin n'est pas acheté.\n\n")
               + fr ("Achetez-le sur onirique.store ou dans ONIRIQUE CENTRAL : l'achat est pris en compte ici en quelques secondes.")
         : product + fr (" n'est pas activé sur ce PC.\n\n")

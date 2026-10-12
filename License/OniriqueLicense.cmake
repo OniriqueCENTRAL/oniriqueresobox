@@ -23,6 +23,7 @@ function(onirique_add_license target)
 
     set(sources
         "${dir}/License.cpp"
+        "${dir}/LicenseCore.cpp"
         "${dir}/LicenseOverlay.cpp"
         "${dir}/tweetnacl.c")
     target_sources(${target} PRIVATE ${sources})
@@ -36,6 +37,18 @@ function(onirique_add_license target)
     target_link_libraries(${target} PRIVATE
         ${target}LicenseData
         juce::juce_audio_basics
-        juce::juce_cryptography
         juce::juce_gui_basics)
+endfunction()
+
+# Pour un plugin qui n'utilise pas JUCE : la vérification et le bruit du mode démo seulement
+# (LicenseCore.h). La pastille et la page d'activation sont à dessiner avec l'interface du plugin.
+function(onirique_add_license_core target)
+    set(dir "${ONIRIQUE_LICENSE_DIR}")
+    target_sources(${target} PRIVATE "${dir}/LicenseCore.cpp" "${dir}/tweetnacl.c")
+    target_include_directories(${target} PRIVATE "${dir}/..")
+    if(APPLE)
+        target_link_libraries(${target} PRIVATE "-framework IOKit" "-framework CoreFoundation")
+    elseif(WIN32)
+        target_link_libraries(${target} PRIVATE advapi32 shell32)
+    endif()
 endfunction()

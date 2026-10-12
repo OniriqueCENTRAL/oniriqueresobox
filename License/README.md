@@ -1,6 +1,6 @@
 # Licence ONIRIQUE dans un plugin
 
-Ce dossier est le même dans tous les plugins ONIRIQUE (JUCE 8 ou 9, Windows et Mac). Il se copie tel
+Ce dossier est le même dans tous les plugins ONIRIQUE (avec ou sans JUCE, Windows et Mac). Il se copie tel
 quel à la racine du dépôt du plugin, sous le nom `License/`, et ne se modifie qu'ici, dans
 `plugin-license/` du dépôt ONIRIQUE CENTRAL.
 
@@ -9,7 +9,7 @@ signature avec la clé publique du serveur, et en déduit trois états.
 
 | État | Écoute | Export | Interface |
 |---|---|---|---|
-| Acheté, ou abonnement actif | intacte | intact | rien |
+| Acheté, ou abonnement actif | intacte | intact | témoin « ACTIVÉ » |
 | Essai gratuit en cours | intacte | bruit blanc | pastille « ESSAI · 5 J · ACTIVATION » |
 | Pas de licence, ou essai terminé | 2 s de bruit toutes les 30 s | bruit blanc | pastille « MODE DÉMO · ACTIVATION », page d'activation à l'ouverture |
 
@@ -62,10 +62,35 @@ if (licenseOverlay != nullptr)
     licenseOverlay->fit (getLocalBounds(), scale, { 500, 10, 248, 26 });
 ```
 
+## Plugin sans JUCE
+
+La vérification et le bruit sont dans `LicenseCore.h`, qui ne dépend d'aucune bibliothèque (C++17) :
+
+```cmake
+include(License/OniriqueLicense.cmake)
+onirique_add_license_core(MonPlugin)
+```
+
+```cpp
+#include "License/LicenseCore.h"
+
+onirique::license::core::Guard license { "identifiant-du-plugin" };   // membre du processeur
+
+license.refresh();                                                    // à la préparation, hors thread audio
+license.process (sorties, nombreDeCanaux, nombreDEchantillons, frequence, exportEnCours);   // en fin de traitement
+```
+
+La pastille et la page de la licence se dessinent avec l'interface du plugin, à partir de
+`license.status()` (état, compte, jours restants) et de `core::openCentral()` pour le bouton. RAW
+(page web) et TAMA-VOX (VSTGUI) en sont deux exemples.
+
 ## Vérifier
 
 Le mode démo se force sur une machine qui a une licence avec la variable d'environnement
 `ONIRIQUE_DEMO=1` (elle ne peut que retirer la licence, jamais en donner une).
+
+`node tools/license-test.mjs <OniriqueLicenseTest>` (dépôt ONIRIQUE CENTRAL) rejoue la vérification sur des
+licences signées comme par le serveur : valide, essai, expirée, autre machine, falsifiée.
 
 `OniriqueLicenseTest`, dans le dépôt d'ONIRIQUE TUNER (`cmake --build build --target OniriqueLicenseTest`) :
 

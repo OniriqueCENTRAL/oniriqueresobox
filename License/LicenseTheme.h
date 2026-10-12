@@ -20,6 +20,7 @@ namespace palette
     inline const juce::Colour emberHot { 0xffff5a68 };
     inline const juce::Colour bone     { 0xffffecee };
     inline const juce::Colour rose     { 0xffffd2d6 };
+    inline const juce::Colour active   { 0xff6fdc9c }; // le témoin « ACTIVÉ »
 }
 
 /** Unbounded (titres), Hanken Grotesk (texte), JetBrains Mono (étiquettes). */
