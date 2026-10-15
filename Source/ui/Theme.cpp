@@ -1,4 +1,5 @@
 #include "Theme.h"
+#include "OniriqueKnob.h"
 
 namespace onirique::theme
 {
@@ -41,9 +42,6 @@ void OniriqueLookAndFeel::drawRotarySlider (Graphics& g, int x, int y, int width
     const auto bounds = Rectangle<int> (x, y, width, height).toFloat().reduced (5.0f).withTrimmedBottom (9.0f);
     const auto radius = jmin (bounds.getWidth(), bounds.getHeight()) * 0.5f;
     const auto centre = bounds.getCentre();
-    const auto angle = startAngle + sliderPos * (endAngle - startAngle);
-    const auto thickness = jmax (3.0f, radius * 0.13f);
-    const auto arcRadius = radius - thickness * 0.5f;
 
     // A knob that belongs to one band of the curve wears that band's colour.
     const auto& properties = slider.getProperties();
@@ -54,62 +52,12 @@ void OniriqueLookAndFeel::drawRotarySlider (Graphics& g, int x, int y, int width
         return Point<float> (centre.x + r * std::sin (a), centre.y - r * std::cos (a));
     };
 
-    Path track;
-    track.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f, startAngle, endAngle, true);
-    g.setColour (Colour (0x26ffd2d6));
-    g.strokePath (track, PathStrokeType (thickness, PathStrokeType::curved, PathStrokeType::rounded));
-
     // Bipolar controls fill outwards from the middle, so "no change" reads as
     // an empty arc rather than as a half-full one.
     const auto bipolar = (slider.getMinimum() < 0.0 && slider.getMaximum() > 0.0) || properties.contains ("bipolar");
-    const auto originAngle = bipolar ? (startAngle + endAngle) * 0.5f : startAngle;
-    const auto from = jmin (originAngle, angle);
-    const auto to = jmax (originAngle, angle);
 
-    if (to - from > 0.01f)
-    {
-        Path arc;
-        arc.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f, from, to, true);
-
-        // The arc glows: two wide, faint strokes under the bright one.
-        g.setColour (accent.withAlpha (0.16f));
-        g.strokePath (arc, PathStrokeType (thickness * 3.4f, PathStrokeType::curved, PathStrokeType::rounded));
-        g.setColour (accent.withAlpha (0.28f));
-        g.strokePath (arc, PathStrokeType (thickness * 2.0f, PathStrokeType::curved, PathStrokeType::rounded));
-
-        // Pale where it starts, ember where the pointer is.
-        const auto hot = slider.isMouseOverOrDragging() ? accent.brighter (0.35f) : accent;
-        g.setGradientFill (ColourGradient (accent.interpolatedWith (Colours::white, 0.7f), pointAt (from, arcRadius),
-                                           hot, pointAt (to, arcRadius), false));
-        g.strokePath (arc, PathStrokeType (thickness, PathStrokeType::curved, PathStrokeType::rounded));
-    }
-
-    // Body: a dark sphere lit from the upper left, set in a thin rim.
-    const auto body = Rectangle<float> (2.0f * (radius - thickness * 1.9f), 2.0f * (radius - thickness * 1.9f))
-                          .withCentre (centre);
-
-    g.setColour (Colour (0xff050203));
-    g.fillEllipse (body.expanded (2.5f));
-
-    g.setGradientFill (ColourGradient (Colour (0xff4a2a2e),
-                                       centre.x - radius * 0.3f, centre.y - radius * 0.4f,
-                                       Colour (0xff0b0506),
-                                       centre.x + radius * 0.6f, centre.y + radius * 0.7f,
-                                       true));
-    g.fillEllipse (body);
-
-    g.setColour (Colour (0x30ffd2d6));
-    g.drawEllipse (body, 1.0f);
-
-    const auto bodyRadius = body.getWidth() * 0.5f;
-
-    Path pointer;
-    pointer.startNewSubPath (pointAt (angle, bodyRadius * 0.28f));
-    pointer.lineTo (pointAt (angle, bodyRadius * 0.82f));
-
-    g.setColour (Colours::white);
-    g.strokePath (pointer, PathStrokeType (jmax (1.8f, radius * 0.08f), PathStrokeType::curved,
-                                           PathStrokeType::rounded));
+    // The ONIRIQUE knob, the same in every plugin of the brand (Source/ui/OniriqueKnob.h).
+    onirique::ui::drawKnob (g, bounds, sliderPos, startAngle, endAngle, accent, bipolar, slider.isMouseOverOrDragging());
 
     // The range, written small at the two ends of the arc.
 

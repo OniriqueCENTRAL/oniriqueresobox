@@ -545,9 +545,6 @@ void ResoBoxEditor::paint (Graphics& g)
 
 void ResoBoxEditor::resized()
 {
-    if (licenseOverlay != nullptr)
-        licenseOverlay->fit (getLocalBounds(), 1.0f, { 276, 100, 248, 26 });
-
     auto bounds = getLocalBounds();
     auto header = bounds.removeFromTop (kHeaderHeight);
 
@@ -558,6 +555,12 @@ void ResoBoxEditor::resized()
     bypassButton.setBounds (row.removeFromRight (100));
     row.removeFromRight (8);
     deltaButton.setBounds (row.removeFromRight (90));
+    row.removeFromRight (8);
+
+    // The licence badge is one of the header's buttons, next to Delta and Bypass: the same height, the same
+    // capsule. Its room is that of its longest wording; it sits against them whatever it says.
+    if (licenseOverlay != nullptr)
+        licenseOverlay->fit (getLocalBounds(), 1.0f, row.removeFromRight (150), Justification::centredRight);
     row.removeFromRight (18);
 
     copyButton.setBounds (row.removeFromRight (64));
