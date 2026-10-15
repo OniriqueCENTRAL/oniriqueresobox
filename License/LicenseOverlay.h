@@ -32,7 +32,8 @@ public:
     void fit (juce::Rectangle<int> editorBounds, float scale, juce::Rectangle<int> pillArea,
               juce::Justification justification = juce::Justification::centred);
 
-    /** La largeur que prend la pastille dans l'état présent (pour ranger les boutons voisins). */
+    /** La largeur que prend la pastille dans l'état présent, pour lui réserver sa place dans la barre du haut.
+        Quand l'état change (activation, fin d'essai), la pastille demande au plugin de ranger à nouveau son interface. */
     int pillWidth() const;
 
     void paint (juce::Graphics&) override;

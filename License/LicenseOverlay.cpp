@@ -229,6 +229,10 @@ void Overlay::update()
         if (licensed && pageOpen)
             setPageOpen (false);
 
+        // La pastille change de largeur : le plugin range à nouveau sa barre du haut (voir pillWidth()).
+        if (auto* editor = getParentComponent())
+            editor->resized();
+
         resized();
         repaint();
     }
