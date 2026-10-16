@@ -1,0 +1,2 @@
+ResoBox-macOS-AU.zip
+ResoBox-macOS-VST3.zip
