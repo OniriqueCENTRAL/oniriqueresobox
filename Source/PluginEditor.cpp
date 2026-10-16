@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "ui/OniriqueWindowSize.h"
 
 #include <BinaryData.h>
 
@@ -231,7 +232,9 @@ ResoBoxEditor::ResoBoxEditor (ResoBoxProcessor& p)
 
     setResizable (true, true);
     setResizeLimits (1270, 620, 2000, 1250);
-    setSize (1290, 740);
+    // taille d'ouverture : la règle commune des plugins ONIRIQUE (ui/OniriqueWindowSize.h)
+    const auto opening = onirique::window::openingSize ({}, "ONIRIQUE RESOBOX", { 1290, 740 }, { 1270, 620 }, { 2000, 1250 });
+    setSize (opening.x, opening.y);
 
     timerCallback();
     // The licence pill and the activation page, over everything else.
@@ -244,6 +247,7 @@ ResoBoxEditor::ResoBoxEditor (ResoBoxProcessor& p)
 
 ResoBoxEditor::~ResoBoxEditor()
 {
+    onirique::window::rememberOnThisComputer ("ONIRIQUE RESOBOX", getWidth(), getHeight());
     setLookAndFeel (nullptr);
 }
 
