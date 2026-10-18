@@ -1,0 +1,150 @@
+  Building Custom Rule D:/a/oniriqueresobox/oniriqueresobox/CMakeLists.txt
+  ResoBoxAssets.vcxproj -> D:\a\oniriqueresobox\oniriqueresobox\build\Release\ResoBoxAssets.lib
+  Fft.cpp
+  BinaryData2.cpp
+  BinaryData3.cpp
+  BinaryData4.cpp
+  Generating Code...
+  OniriqueResoBoxLicenseData.vcxproj -> D:\a\oniriqueresobox\oniriqueresobox\build\Release\OniriqueResoBoxLicenseData.lib
+  ResonanceSuppressor.cpp
+  Generating Code...
+  resobox_core.vcxproj -> D:\a\oniriqueresobox\oniriqueresobox\build\Release\resobox_core.lib
+  Building Custom Rule D:/a/oniriqueresobox/oniriqueresobox/CMakeLists.txt
+  PluginProcessor.cpp
+  PluginEditor.cpp
+  SpectrumDisplay.cpp
+  Theme.cpp
+D:\a\oniriqueresobox\oniriqueresobox\Source\ui\OniriqueWindowSize.h(54,28): warning C4996: 'juce::Displays::Display::userArea': Use userBounds [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+  (compiling source file '../Source/PluginEditor.cpp')
+  
+D:\a\oniriqueresobox\oniriqueresobox\Source\ui\OniriqueWindowSize.h(52,68): warning C4996: 'juce::Displays::getDisplayForPoint': Prefer the Point<float> overload [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+  (compiling source file '../Source/PluginEditor.cpp')
+  
+  juce_audio_processors.cpp
+  juce_gui_extra.cpp
+  juce_gui_basics.cpp
+  juce_gui_basics_2.cpp
+D:\a\oniriqueresobox\oniriqueresobox\JUCE\modules\juce_gui_basics\juce_gui_basics.cpp(61): warning : This version of JUCE does not use the splash screen, the flag JUCE_DISPLAY_SPLASH_SCREEN is ignored [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+  juce_gui_basics_3.cpp
+  juce_gui_basics_4.cpp
+  juce_gui_basics_5.cpp
+  juce_graphics.cpp
+  juce_graphics_Harfbuzz.cpp
+  juce_events.cpp
+  juce_core.cpp
+  juce_core_CompilationTime.cpp
+  juce_data_structures.cpp
+  juce_audio_processors_headless.cpp
+  juce_audio_processors_headless_ara.cpp
+  juce_audio_processors_headless_lv2_libs.cpp
+  juce_audio_basics.cpp
+  juce_audio_utils.cpp
+  juce_audio_formats.cpp
+  juce_audio_devices.cpp
+  License.cpp
+  LicenseCore.cpp
+  LicenseOverlay.cpp
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5604,24): warning C4244: '=': conversion from 'const _Ty' to '_Ty', possible loss of data [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5604,24): warning C4244:         with [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5604,24): warning C4244:         [ [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5604,24): warning C4244:             _Ty=int [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5604,24): warning C4244:         ] [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5604,24): warning C4244:         and [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5604,24): warning C4244:         [ [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5604,24): warning C4244:             _Ty=unsigned char [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5604,24): warning C4244:         ] [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+  (compiling source file '../License/LicenseCore.cpp')
+      C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5604,24):
+      the template instantiation context (the oldest one first) is
+          D:\a\oniriqueresobox\oniriqueresobox\License\LicenseCore.cpp(869,10):
+          see reference to function template instantiation 'void std::fill<_Ty*,int>(const _FwdIt,const _FwdIt,const int &)' being compiled
+          with
+          [
+              _Ty=unsigned char,
+              _FwdIt=unsigned char *
+          ]
+  
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5547,37): warning C4244: 'initializing': conversion from 'const _Ty' to 'unsigned char', possible loss of data [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5547,37): warning C4244:         with [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5547,37): warning C4244:         [ [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5547,37): warning C4244:             _Ty=int [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5547,37): warning C4244:         ] [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+  (compiling source file '../License/LicenseCore.cpp')
+      C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5547,37):
+      the template instantiation context (the oldest one first) is
+          D:\a\oniriqueresobox\oniriqueresobox\License\LicenseCore.cpp(869,10):
+          see reference to function template instantiation 'void std::fill<_Ty*,int>(const _FwdIt,const _FwdIt,const int &)' being compiled
+          with
+          [
+              _Ty=unsigned char,
+              _FwdIt=unsigned char *
+          ]
+          C:\Program Files\Microsoft Visual Studio\18\Enterprise\VC\Tools\MSVC\14.51.36231\include\xutility(5593,22):
+          see reference to function template instantiation 'void std::_Fill_memset<_FwdIt,_Ty>(_CtgIt,const _Ty,const size_t)' being compiled
+          with
+          [
+              _FwdIt=unsigned char *,
+              _Ty=int,
+              _CtgIt=unsigned char *
+          ]
+  
+  tweetnacl.c
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(13,9): warning C4132: '_0': const object should be initialized [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(16,6): warning C4132: 'gf0': const object should be initialized [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(45,21): warning C4244: '=': conversion from 'u32' to 'u8', possible loss of data [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(51,35): warning C4244: '=': conversion from 'u64' to 'u8', possible loss of data [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(57,3): warning C4018: '<': signed/unsigned mismatch [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(123,17): warning C4295: 'sigma': array is too small to include a terminating null character [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(138,14): warning C4244: '=': conversion from 'u32' to 'u8', possible loss of data [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(228,7): warning C4146: unary minus operator applied to unsigned type, result still unsigned [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(234,23): warning C4244: '=': conversion from 'u32' to 'u8', possible loss of data [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(316,18): warning C4244: '=': conversion from 'i64' to 'u8', possible loss of data [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(410,18): warning C4244: 'function': conversion from 'i64' to 'int', possible loss of data [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(411,18): warning C4244: 'function': conversion from 'i64' to 'int', possible loss of data [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(430,18): warning C4244: 'function': conversion from 'i64' to 'int', possible loss of data [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(431,18): warning C4244: 'function': conversion from 'i64' to 'int', possible loss of data [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(548,10): warning C4244: 'return': conversion from 'u64' to 'int', possible loss of data [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(723,3): warning C4018: '<': signed/unsigned mismatch [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+D:\a\oniriqueresobox\oniriqueresobox\License\tweetnacl.c(785,11): warning C4245: '=': conversion from 'int' to 'u64', signed/unsigned mismatch [D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox.vcxproj]
+  juce_graphics_Sheenbidi.c
+  juce_graphics_libjpg_1.c
+  juce_graphics_libjpg_2.c
+  juce_graphics_libjpg_3.c
+  juce_graphics_libpng.c
+  juce_graphics_libwebp_dec.c
+  juce_graphics_libwebp_dsp_dec.c
+  juce_graphics_libwebp_dsp_dec_avx2.c
+  juce_graphics_libwebp_dsp_dec_sse41.c
+  juce_graphics_libwebp_dsp_enc.c
+  juce_graphics_libwebp_dsp_enc_avx2.c
+  juce_graphics_libwebp_dsp_enc_sse41.c
+  juce_graphics_libwebp_enc.c
+  juce_graphics_libwebp_sharpyuv.c
+  juce_graphics_libwebp_utils.c
+  juce_graphics_lunasvg.c
+  juce_core_zlib.c
+  juce_audio_formats_flac_1.c
+  juce_audio_formats_flac_2.c
+  juce_audio_formats_ogg.c
+  juce_audio_formats_opus.c
+  juce_audio_formats_opusfile.c
+  OniriqueResoBox.vcxproj -> D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox_artefacts\Release\ResoBox_SharedCode.lib
+  Building Custom Rule D:/a/oniriqueresobox/oniriqueresobox/CMakeLists.txt
+  juce_audio_plugin_client_AAX.cpp
+  juce_audio_plugin_client_AAX_utils.cpp
+  juce_audio_plugin_client_ARA.cpp
+  juce_audio_plugin_client_LV2.cpp
+  juce_audio_plugin_client_Standalone.cpp
+  juce_audio_plugin_client_Unity.cpp
+  juce_audio_plugin_client_VST2.cpp
+  juce_audio_plugin_client_VST3.cpp
+     Creating library D:/a/oniriqueresobox/oniriqueresobox/build/OniriqueResoBox_artefacts/Release/VST3/ResoBox.lib and object D:/a/oniriqueresobox/oniriqueresobox/build/OniriqueResoBox_artefacts/Release/VST3/ResoBox.exp
+  Generating code
+  Finished generating code
+  OniriqueResoBox_VST3.vcxproj -> D:\a\oniriqueresobox\oniriqueresobox\build\OniriqueResoBox_artefacts\Release\VST3\ResoBox.vst3\Contents\x86_64-win\ResoBox.vst3
+  removing moduleinfo.json
+  creating D:/a/oniriqueresobox/oniriqueresobox/build/OniriqueResoBox_artefacts/Release/VST3/ResoBox.vst3/Contents/Resources/moduleinfo.json
+  Building Custom Rule D:/a/oniriqueresobox/oniriqueresobox/CMakeLists.txt
+  test_suppressor.cpp
+  test_suppressor.vcxproj -> D:\a\oniriqueresobox\oniriqueresobox\build\Release\test_suppressor.exe
+  Building Custom Rule D:/a/oniriqueresobox/oniriqueresobox/CMakeLists.txt
