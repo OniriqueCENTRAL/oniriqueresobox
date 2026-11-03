@@ -33,7 +33,19 @@ out=$work/OniriqueResoBox_artefacts/Release
 lipo -info "$out/VST3/ResoBox.vst3/Contents/MacOS/ResoBox"
 lipo -info "$out/AU/ResoBox.component/Contents/MacOS/ResoBox"
 
-# Apple's validator, on the copy the build has just installed for this user.
+# Signed ad hoc as a whole, both slices and the bundle, as the CI's Xcode does by
+# itself: a local Xcode may leave the Audio Unit with only the linker's signature
+# on its arm64 slice. The installed copies are replaced by the signed ones, so
+# auval checks what is shipped.
+for bundle in "$out/VST3/ResoBox.vst3" "$out/AU/ResoBox.component"; do
+    xattr -cr "$bundle"
+    codesign --force --sign - "$bundle"
+    codesign --verify --strict "$bundle"
+done
+ditto "$out/AU/ResoBox.component" "$HOME/Library/Audio/Plug-Ins/Components/ResoBox.component"
+ditto "$out/VST3/ResoBox.vst3" "$HOME/Library/Audio/Plug-Ins/VST3/ResoBox.vst3"
+
+# Apple's validator, on the copy just installed for this user.
 # As on the CI, a failure is reported, not fatal.
 killall -9 AudioComponentRegistrar 2>/dev/null || true
 if auval -v aufx Rsbx Onrq > "$work/auval.log" 2>&1; then
@@ -42,12 +54,13 @@ else
     echo "auval a échoué (voir $work/auval.log) : à regarder avant de publier." >&2
 fi
 
-# Zipped with ditto, as on the CI, so the bundles keep their symlinks and signature.
+# Zipped with ditto, as on the CI, so the bundles keep their symlinks and signature,
+# and without this Mac's extended attributes, which ditto would add as ._ files.
 dist=$work/dist
 rm -rf "$dist"
 mkdir -p "$dist"
-ditto -c -k --keepParent "$out/VST3/ResoBox.vst3" "$dist/ResoBox-macOS-VST3.zip"
-ditto -c -k --keepParent "$out/AU/ResoBox.component" "$dist/ResoBox-macOS-AU.zip"
+ditto -c -k --norsrc --noextattr --noqtn --keepParent "$out/VST3/ResoBox.vst3" "$dist/ResoBox-macOS-VST3.zip"
+ditto -c -k --norsrc --noextattr --noqtn --keepParent "$out/AU/ResoBox.component" "$dist/ResoBox-macOS-AU.zip"
 echo "$sha - $(date -u +%FT%TZ) - built on $(hostname -s)" > "$dist/BUILD.txt"
 
 # Where the CI leaves its builds: a branch holding nothing else, replaced each time.
