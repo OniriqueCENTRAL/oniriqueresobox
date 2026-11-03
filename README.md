@@ -71,6 +71,10 @@ reste tant que le curseur est sur ce contrôle, même s'il bouge, et disparaît 
 
 **Colonne de gauche — comment il agit**
 
+- **EQ / MULTIBAND** : la sensibilité se dessine avec des points (EQ), ou le
+  spectre est coupé en quatre bandes réglées chacune pour elle-même
+  (MULTIBAND, voir plus bas). Chaque mode garde ses réglages pendant qu'on est
+  dans l'autre.
 - **SOFT / HARD** : soft arrondit l'entrée en action ; hard coupe net et deux
   fois plus fort.
 - **DEPTH** : la quantité. À 0 le plugin rend l'entrée à l'identique.
@@ -116,6 +120,22 @@ reste tant que le curseur est sur ce contrôle, même s'il bouge, et disparaît 
       point ;
     - avec plusieurs points il reste là et agit sur tous : GAIN décale chacun
       du même nombre de dB, Q du même rapport ; seul FREQ se grise.
+- En **MULTIBAND**, quatre bandes (low, low mid, high mid, high) séparées par
+  trois lignes, à 150 Hz, 1 kHz et 5 kHz au départ. Les points de l'EQ, low
+  cut et high cut compris, ne comptent plus.
+  - **glisser une ligne** : déplace la frontière (un tiers d'octave au moins
+    entre deux lignes) ; la frontière est douce, sur environ une demi-octave ;
+  - **glisser dans une bande** : sa sensibilité, ±12 dB ; **double-clic** :
+    la bypasse (elle ne retire plus rien) ; **clic droit** : sensibilité à 0 ;
+  - un clic ouvre **l'îlot de la bande** : marche/arrêt, **écoute seule**
+    (le casque : on n'entend que cette bande, traitée ; plusieurs bandes
+    s'écoutent ensemble, les autres s'assombrissent à l'écran), GAIN (la
+    sensibilité), **MAKEUP** (0 à +12 dB rendus à cette bande, hors delta) et
+    **BAL** (épargne un canal dans cette bande, comme BAL au pied mais pour
+    elle seule) ; `<` `>` passent à la bande voisine.
+  - L'écoute seule ne se sauve ni dans les presets ni dans A/B : c'est une
+    façon d'écouter, comme DELTA. Pendant l'écoute, DELTA et BYPASS ne
+    portent que sur les bandes écoutées.
 - En bas à gauche de l'écran : la fréquence et la sensibilité sous le curseur
   (et, curseur ailleurs, le rappel des gestes).
 - Chaque valeur en capsule sous un potard se clique pour être tapée au clavier
@@ -211,9 +231,16 @@ même, lue dans un historique de l'entrée.
 - un plateau de 14 dB et le bord d'un signal coupé à 8 kHz ne sont pas
   touchés (< 1 dB) ;
 - cloches, coupes et tilt agissent dans le bon sens ; delta + sortie = entrée ;
-  link, balance, mono, mid/side et sidechain.
+  link, balance, mono, mid/side et sidechain ;
+- multiband : quatre bandes à 0 dB = la courbe plate ; une bande montée,
+  baissée ou bypassée agit sur sa partie du spectre seulement ; écouter une
+  bande laisse passer elle seule (plus de 40 dB en dessous ailleurs), et les
+  quatre écoutées une à une redonnent le tout (< −90 dB) ; le makeup monte sa
+  bande de son nombre de dB et ne change pas le delta ; la balance d'une bande
+  n'épargne un canal que dans cette bande.
 
-`resobox_snapshot --selftest` (processeur) : slots A/B et copie, état
+`resobox_snapshot --selftest` (processeur) : slots A/B et copie (mode et
+bandes multiband compris, écoute seule non), état
 sauvegardé avec les deux slots, presets stock, sauvegarde / rechargement /
 suppression d'un preset utilisateur.
 

@@ -385,6 +385,108 @@ int main()
         check (change > plain + 1.0, "tilting away from the highs spares it");
     }
 
+    std::printf ("multiband\n");
+    {
+        rb::Settings s;
+        s.lowCutOn = false;
+        const auto plain = ringChange (s);
+
+        // Every zone at 0 dB is the curve at 0 dB, and the cuts are not used.
+        s.multiband = true;
+        s.lowCutOn = true;
+        s.lowCutHz = 8000.0f;
+        auto change = ringChange (s);
+        std::printf ("    four zones at 0 dB, a low cut at 8 kHz left behind: %+.2f dB (plain %+.2f)\n", change, plain);
+        check (std::abs (change - plain) < 0.3, "flat zones work as a flat curve, whatever the cuts say");
+
+        // The resonance is at 3 kHz, in the third zone (1 to 5 kHz).
+        s.zones[2].gainDb = 12.0f;
+        change = ringChange (s);
+        std::printf ("    its zone at +12 dB: %+.2f dB\n", change);
+        check (change < plain - 2.0, "a raised zone works it harder");
+
+        s.zones[2].gainDb = -12.0f;
+        const auto lowered = ringChange (s);
+        s.zones[2] = {};
+        s.zones[2].on = false;
+        const auto off = ringChange (s);
+        std::printf ("    its zone at -12 dB: %+.2f dB, bypassed: %+.2f dB\n", lowered, off);
+        check (lowered > plain + 2.0 && off > -0.3, "a lowered zone spares it, and a bypassed one leaves it alone");
+
+        s.zones[2] = {};
+        s.zones[0].gainDb = 12.0f;
+        change = ringChange (s);
+        check (std::abs (change - plain) < 0.3, "a zone works on its own part of the spectrum only");
+
+        // Listening: each zone on its own, and the four of them added up.
+        s = {};
+        s.multiband = true;
+        s.depth = 8.0f;
+        const auto whole = run (s, ringing);
+        std::vector<float> sum (whole.size(), 0.0f);
+        double inZone = 0.0, outside = 0.0;
+
+        for (int z = 0; z < rb::kNumZones; ++z)
+        {
+            s.zones[z].solo = true;
+            const auto alone = run (s, ringing);
+            s.zones[z].solo = false;
+
+            for (size_t i = 0; i < sum.size(); ++i)
+                sum[i] += alone[i];
+
+            if (z == 2)
+            {
+                inZone = bandDb (alone, 2900.0, 3100.0) - bandDb (whole, 2900.0, 3100.0);
+                outside = bandDb (alone, 300.0, 500.0) - bandDb (whole, 300.0, 500.0);
+            }
+        }
+
+        std::printf ("    listening to the third zone: %+.2f dB at 3 kHz, %+.1f dB at 400 Hz\n", inZone, outside);
+        check (std::abs (inZone) < 0.3 && outside < -40.0, "listening to a zone lets through that zone, processed, and nothing else");
+        check (worstErrorDb (whole, sum, 0) < -90.0, "the four zones listened to one by one add up to the whole");
+
+        s.delta = true;
+        const auto removedWhole = run (s, ringing);
+        s.zones[2].solo = true;
+        const auto removedHere = run (s, ringing);
+        change = bandDb (removedHere, 300.0, 500.0) - bandDb (removedWhole, 300.0, 500.0);
+        std::printf ("    delta while listening to the third zone, at 400 Hz: %+.1f dB\n", change);
+        check (change < -40.0, "delta while listening is what is taken from that zone only");
+
+        // Makeup: level given back to one zone, never part of delta.
+        s = {};
+        s.multiband = true;
+        s.depth = 8.0f;
+        s.zones[1].makeupDb = 6.0f;
+        const auto raised = run (s, ringing);
+        change = bandDb (raised, 400.0, 600.0) - bandDb (whole, 400.0, 600.0);
+        const auto elsewhere = bandDb (raised, 2900.0, 3100.0) - bandDb (whole, 2900.0, 3100.0);
+        std::printf ("    +6 dB makeup on the second zone: %+.2f dB at 500 Hz, %+.2f dB at 3 kHz\n", change, elsewhere);
+        check (std::abs (change - 6.0) < 0.3 && std::abs (elsewhere) < 0.3, "makeup raises its own zone by its amount, and only that");
+
+        s.delta = true;
+        check (worstErrorDb (removedWhole, run (s, ringing), 0) < -100.0, "delta is the same with makeup or without");
+
+        // Balance in a zone, unlinked: it spares the side it leans away from.
+        s = {};
+        s.multiband = true;
+        s.depth = 8.0f;
+        s.link = 0.0f;
+        s.zones[2].balance = 1.0f;
+        const auto other = rbtest::makeNoise (3.0, kSr, 0.1f, 99);
+        auto r = other;
+        const auto l = run (s, ringing, 512, nullptr, &r);
+        change = bandDb (l, 2900.0, 3100.0) - ringBefore;
+        s.zones[2].balance = 0.0f;
+        s.zones[0].balance = 1.0f;
+        r = other;
+        const auto elsewhereBalanced = bandDb (run (s, ringing, 512, nullptr, &r), 2900.0, 3100.0) - ringBefore;
+        std::printf ("    left at 3 kHz, its zone leaning right: %+.2f dB; another zone leaning right: %+.2f dB\n",
+                     change, elsewhereBalanced);
+        check (change > -0.1 && elsewhereBalanced < -3.0, "a zone's balance spares one side in that zone only");
+    }
+
     std::printf ("output stage\n");
     {
         rb::Settings s;

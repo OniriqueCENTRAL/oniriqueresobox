@@ -80,12 +80,59 @@ float bandShape (const Band& band, float hz) noexcept
     return bandDb (unit, hz);
 }
 
+float zoneShare (const Settings& s, int zone, float hz) noexcept
+{
+    float edges[kNumZones - 1];
+    std::copy (std::begin (s.crossoverHz), std::end (s.crossoverHz), edges);
+    std::sort (std::begin (edges), std::end (edges));
+
+    // Each crossover hands the spectrum from the zone below to the one above
+    // over about half an octave. The shares multiply out so that they always
+    // add up to 1.
+    const float position = std::log2 (std::max (1.0f, hz));
+    float share = 1.0f;
+
+    for (int i = 0; i < kNumZones - 1; ++i)
+    {
+        const float above = 0.5f + 0.5f * std::tanh (4.0f * (position - std::log2 (std::max (1.0f, edges[i]))));
+
+        if (i == zone)
+            return share * (1.0f - above);
+
+        share *= above;
+    }
+
+    return share;
+}
+
 float sensitivityDb (const Settings& s, float hz, int detector) noexcept
 {
     hz = std::max (1.0f, hz);
 
     const float position = std::log2 (hz);
     float db = s.tiltDbPerOctave * (position - std::log2 (1000.0f));
+
+    if (s.multiband)
+    {
+        // The zones' heights, blended where they meet. On a detector, a
+        // zone's balance spares one of its pair: the even one is left or mid.
+        float linear = 0.0f;
+
+        for (int z = 0; z < kNumZones; ++z)
+        {
+            const auto& zone = s.zones[z];
+
+            if (! zone.on)
+                continue;
+
+            const float lean = std::max (-1.0f, std::min (1.0f, zone.balance));
+            const float amount = detector < 0 ? 1.0f : std::min (1.0f, detector % 2 == 0 ? 1.0f - lean : 1.0f + lean);
+
+            linear += zoneShare (s, z, hz) * amount * std::exp (zone.gainDb * kLn10Over20);
+        }
+
+        return db + 20.0f * std::log10 (std::max (1.0e-4f, linear));
+    }
 
     for (const auto& band : s.bands)
     {
@@ -138,6 +185,7 @@ void ResonanceSuppressor::prepare (double newSampleRate, int)
     {
         inRing[c].assign (maxSize, 0.0f);
         outRing[c].assign (maxSize, 0.0f);
+        dryRing[c].assign (maxSize, 0.0f);
         inHistory[c].assign (maxSize, 0.0f);
         scHistory[c].assign (maxSize, 0.0f);
         spec[c].assign (maxSize, {});
@@ -162,6 +210,9 @@ void ResonanceSuppressor::prepare (double newSampleRate, int)
 
     for (auto* v : { &fine, &scratch, &crossing, &detCrossing, &visIn, &visOut, &visRed })
         v->assign (maxBins, 0.0f);
+
+    zoneMask.assign (maxBins, 1.0f);
+    zoneMakeup.assign (maxBins, 1.0f);
 
     std::fill (visIn.begin(), visIn.end(), -120.0f);
     std::fill (visOut.begin(), visOut.end(), -120.0f);
@@ -189,7 +240,9 @@ void ResonanceSuppressor::configure (int frame) noexcept
     for (int i = 0; i < fftSize; ++i)
         window[(size_t) i] = 0.5f - 0.5f * (float) std::cos (2.0 * M_PI * (double) i / (double) fftSize);
 
-    weightsDirty = true;
+    // At once, not at the next detection: the zones' bins follow the frame,
+    // and frames are processed before the first detection.
+    updateWeights();
     reset();
 }
 
@@ -199,6 +252,7 @@ void ResonanceSuppressor::reset() noexcept
     {
         std::fill (inRing[c].begin(), inRing[c].end(), 0.0f);
         std::fill (outRing[c].begin(), outRing[c].end(), 0.0f);
+        std::fill (dryRing[c].begin(), dryRing[c].end(), 0.0f);
         std::fill (inHistory[c].begin(), inHistory[c].end(), 0.0f);
         std::fill (scHistory[c].begin(), scHistory[c].end(), 0.0f);
     }
@@ -216,6 +270,7 @@ void ResonanceSuppressor::reset() noexcept
 
     dryPower = processedPower = 0.0;
     makeupNow = 1.0f;
+    listenTail = 0;
 
     pos = 0;
     hopCount = 0;
@@ -235,6 +290,17 @@ void ResonanceSuppressor::setSettings (const Settings& s) noexcept
         const auto& b = settings.bands[i];
         curveChanged = a.on != b.on || a.freq != b.freq || a.gainDb != b.gainDb || a.q != b.q || a.shape != b.shape
                        || a.placement != b.placement;
+    }
+
+    curveChanged = curveChanged || s.multiband != settings.multiband
+                   || ! std::equal (std::begin (s.crossoverHz), std::end (s.crossoverHz), std::begin (settings.crossoverHz));
+
+    for (int i = 0; i < kNumZones && ! curveChanged; ++i)
+    {
+        const auto& a = s.zones[i];
+        const auto& b = settings.zones[i];
+        curveChanged = a.on != b.on || a.gainDb != b.gainDb || a.makeupDb != b.makeupDb || a.balance != b.balance
+                       || a.solo != b.solo;
     }
 
     weightsDirty = weightsDirty || curveChanged;
@@ -278,7 +344,8 @@ void ResonanceSuppressor::updateWeights() noexcept
         const bool onMidSide = band.placement == BandPlacement::mid || band.placement == BandPlacement::side;
         const bool onLeftRight = band.placement == BandPlacement::left || band.placement == BandPlacement::right;
 
-        if (! band.on)
+        // The bands are not heard in multiband, placed or not.
+        if (! band.on || settings.multiband)
             continue;
 
         // A band for one signal of a pair is no use if the link then hands
@@ -298,6 +365,36 @@ void ResonanceSuppressor::updateWeights() noexcept
 
         for (int k = 0; k < bins; ++k)
             detCrossing[(size_t) k] = std::max (detCrossing[(size_t) k], std::min (1.0f, bandShape (band, (float) k * binHz)));
+    }
+
+    // What the zones do to the signal itself, in the processing frame's bins:
+    // which of it is heard, and the level each gives back. A zone that is off
+    // gives nothing back.
+    bool anySolo = false;
+
+    for (const auto& zone : settings.zones)
+        anySolo = anySolo || zone.solo;
+
+    listening = settings.multiband && anySolo;
+
+    const int frameBins = fftSize / 2 + 1;
+    const auto frameHz = (float) (sampleRate / (double) fftSize);
+
+    for (int k = 0; k < frameBins; ++k)
+    {
+        float heard = 0.0f, makeup = 0.0f;
+
+        for (int z = 0; z < kNumZones && settings.multiband; ++z)
+        {
+            const auto& zone = settings.zones[z];
+            const float share = zoneShare (settings, z, (float) k * frameHz);
+
+            heard += zone.solo ? share : 0.0f;
+            makeup += share * std::exp ((zone.on ? zone.makeupDb : 0.0f) * kLn10Over20);
+        }
+
+        zoneMask[(size_t) k] = listening ? heard : 1.0f;
+        zoneMakeup[(size_t) k] = settings.multiband ? makeup : 1.0f;
     }
 
     weightsDirty = false;
@@ -339,16 +436,21 @@ void ResonanceSuppressor::process (float* const* io, const float* const* sidecha
         float dry[kMaxChannels] = {}, processed[kMaxChannels] = {};
         double dryNow = 0.0, processedNow = 0.0;
 
+        // Until the last frame that listened has gone out, the dry signal is
+        // the one the frames let through.
+        listenTail = listening ? fftSize : std::max (0, listenTail - 1);
+
         for (int c = 0; c < numChannels; ++c)
         {
             // What sits at the write position is the input of one frame ago:
             // the dry signal, already lined up with what comes out wet.
-            dry[c] = inRing[c][(size_t) pos];
+            dry[c] = listenTail > 0 ? dryRing[c][(size_t) pos] : inRing[c][(size_t) pos];
             const float wet = outRing[c][(size_t) pos];
             const float in = io[c][i];
 
             inRing[c][(size_t) pos] = in;
             outRing[c][(size_t) pos] = 0.0f;
+            dryRing[c][(size_t) pos] = 0.0f;
             inHistory[c][(size_t) historyPos] = in;
             scHistory[c][(size_t) historyPos] = useSidechain && sidechain[c] != nullptr ? sidechain[c][i] : 0.0f;
 
@@ -622,17 +724,35 @@ void ResonanceSuppressor::processFrame (int numChannels) noexcept
         return g > 1.0e-4f ? std::exp (-g * kLn10Over20) : 1.0f;
     };
 
+    // Both signals of a bin go out in one inverse transform: the processed
+    // one as the real part, the input as the zones being listened to let it
+    // through as the imaginary part. Each is the spectrum of a real signal,
+    // so neither spills into the other.
+    auto put = [size] (std::complex<float>* x, int k, std::complex<float> wet, std::complex<float> dry)
+    {
+        const std::complex<float> j (0.0f, 1.0f);
+        x[k] = wet + j * dry;
+
+        if (k > 0 && k < size / 2)
+            x[size - k] = std::conj (wet) + j * std::conj (dry);
+    };
+
+    // Delta stays what was taken away: the makeup is not part of it.
+    const bool makeupHeard = ! settings.delta;
+
+    auto wetOf = [this, makeupHeard] (int k)
+    {
+        return zoneMask[(size_t) k] * (makeupHeard ? zoneMakeup[(size_t) k] : 1.0f);
+    };
+
     if (! stereo)
     {
         auto* x = spec[0].data();
 
         for (int k = 0; k < bins; ++k)
         {
-            const float gain = gainOf (0, k);
-            x[k] *= gain;
-
-            if (k > 0 && k < size / 2)
-                x[size - k] *= gain;
+            const auto in = x[k];
+            put (x, k, in * (gainOf (0, k) * wetOf (k)), in * zoneMask[(size_t) k]);
         }
     }
     else
@@ -658,15 +778,11 @@ void ResonanceSuppressor::processFrame (int numChannels) noexcept
             // other pair takes its own share of the bins under it.
             const float share = crossing[(size_t) k];
             const float asMidSide = mainIsMidSide ? 1.0f - share : share;
+            const float wet = wetOf (k);
+            const float heard = zoneMask[(size_t) k];
 
-            xl[k] = leftRightL + asMidSide * (midSideL - leftRightL);
-            xr[k] = leftRightR + asMidSide * (midSideR - leftRightR);
-
-            if (k > 0 && k < size / 2)
-            {
-                xl[size - k] = std::conj (xl[k]);
-                xr[size - k] = std::conj (xr[k]);
-            }
+            put (xl, k, (leftRightL + asMidSide * (midSideL - leftRightL)) * wet, l * heard);
+            put (xr, k, (leftRightR + asMidSide * (midSideR - leftRightR)) * wet, r * heard);
         }
     }
 
@@ -680,7 +796,11 @@ void ResonanceSuppressor::processFrame (int numChannels) noexcept
         fft->inverse (x);
 
         for (int i = 0; i < size; ++i)
-            outRing[c][(size_t) ((pos + i) & mask)] += x[i].real() * window[(size_t) i] * scale;
+        {
+            const auto at = (size_t) ((pos + i) & mask);
+            outRing[c][at] += x[i].real() * window[(size_t) i] * scale;
+            dryRing[c][at] += x[i].imag() * window[(size_t) i] * scale;
+        }
     }
 }
 

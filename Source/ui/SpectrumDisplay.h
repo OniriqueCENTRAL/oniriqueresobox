@@ -24,6 +24,10 @@ namespace onirique
     Several nodes can be selected at once, with Ctrl or Shift and a click or
     with a frame drawn in the empty. They are then dragged together, and the
     Delete key removes those of them that are bells.
+
+    In multiband the curve is four zones side by side instead: each is dragged
+    up or down as a whole, the lines between them left or right, and a click
+    on one opens its own island.
 */
 class SpectrumDisplay final : public Component,
                               private Timer
@@ -63,8 +67,15 @@ public:
     static Colour nodeColour (int node);
     static String nodeName (int node);
 
+    /** Multiband: selects one zone, or none with -1, and opens its island. */
+    void selectZone (int zone);
+
+    static Colour zoneColour (int zone);
+    static String zoneName (int zone);
+
 private:
     class NodePanel;
+    class ZonePanel;
 
     void timerCallback() override;
 
@@ -110,12 +121,39 @@ private:
     void paintCurve (Graphics&, const rb::Settings&);
     void paintNodes (Graphics&, const rb::Settings&);
 
+    // Multiband.
+    bool isMultiband() const;
+    float crossoverHz (int crossover) const;
+
+    /** The zone under a point by its frequency, or -1 outside the plot. */
+    int zoneAt (Point<float>) const;
+
+    /** The crossover line within a few pixels of a point, or -1. */
+    int crossoverAt (Point<float>) const;
+
+    /** Where a zone starts and ends across the plot. */
+    Range<float> zoneSpan (int zone) const;
+    void placeZonePanel();
+    void paintZones (Graphics&, const rb::Settings&);
+
+    void zoneMouseDown (const MouseEvent&);
+    void zoneMouseDrag (const MouseEvent&);
+    void zoneMouseUp();
+
     /** The spectrum as a line with no corners in it: averaged over a third of
         an octave, then drawn through as a curve. */
     Path spectrumPath (const std::vector<double>& cumulative, bool closed) const;
 
     ResoBoxProcessor& processor;
     std::unique_ptr<NodePanel> panel;
+    std::unique_ptr<ZonePanel> zonePanel;
+
+    // Multiband: the zone whose island is open, the one or the line under the
+    // pointer, and what a drag started from.
+    int selectedZone = -1, hoveredZone = -1, hoveredCrossover = -1;
+    int draggingZone = -1, draggingCrossover = -1;
+    float dragStartValue = 0.0f;
+    bool shownMultiband = false;
 
     Rectangle<float> plot;
     std::array<bool, kNumNodes> inSelection {};

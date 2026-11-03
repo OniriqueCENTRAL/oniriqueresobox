@@ -46,6 +46,19 @@ float bandDb (const Band&, float hz) noexcept;
 
 enum class StereoMode { stereo, midSide, mono };
 
+/** Multiband: the spectrum split in four by three crossovers, each part with
+    its own sensitivity, in place of the cuts and the bands. */
+constexpr int kNumZones = 4;
+
+struct Zone
+{
+    bool on = true;
+    float gainDb = 0.0f;        // sensitivity, as a band's gain
+    float makeupDb = 0.0f;      // level given back to this part of the spectrum
+    float balance = 0.0f;       // as Settings::balance, for this part only
+    bool solo = false;          // heard on its own
+};
+
 struct Settings
 {
     float depth = 5.0f;         // 0..10, how much of what sticks out is taken away
@@ -65,6 +78,10 @@ struct Settings
     float highCutHz = 16000.0f;
     Band bands[kNumBands];
 
+    bool multiband = false;     // the zones below instead of the cuts and the bands
+    float crossoverHz[kNumZones - 1] = { 150.0f, 1000.0f, 5000.0f };
+    Zone zones[kNumZones];
+
     float mix = 1.0f;
     float outDb = 0.0f;
     bool autoGain = false;      // give back the level the cuts took away
@@ -78,11 +95,17 @@ struct Settings
 /** The sensitivity curve drawn in the editor, in dB, at one frequency. 0 means
     the suppressor works as set; the cuts take it towards minus infinity.
     With a detector given (0 left, 1 right, 2 mid, 3 side), only the bands
-    placed on it, and those placed everywhere, count. */
+    placed on it, and those placed everywhere, count. In multiband the zones
+    take the place of the bands and the cuts, and a detector is leaned on or
+    spared by each zone's balance. */
 float sensitivityDb (const Settings&, float hz, int detector = -1) noexcept;
 
 /** A band's own shape, from 0 to 1, whatever its height. */
 float bandShape (const Band&, float hz) noexcept;
+
+/** How much of a frequency belongs to a zone, from 0 to 1. The four always
+    add up to 1, so soloing each in turn and adding them gives the whole. */
+float zoneShare (const Settings&, int zone, float hz) noexcept;
 
 /** Finds what sticks out of the spectrum and turns it down, bin by bin.
 
@@ -145,6 +168,17 @@ private:
     // with which a cut can be applied.
     std::vector<float> window;
     std::vector<float> inRing[kMaxChannels], outRing[kMaxChannels];
+
+    // The input as the zones being listened to let it through, rebuilt by
+    // the same frames: it stands in for the dry signal while listening, and
+    // for one frame after.
+    std::vector<float> dryRing[kMaxChannels];
+    bool listening = false;
+    int listenTail = 0;
+
+    // Per bin of the processing frame: how much of it is heard (all of it,
+    // unless a zone is soloed), and the zones' makeup.
+    std::vector<float> zoneMask, zoneMakeup;
     std::vector<std::complex<float>> spec[kMaxChannels];
     std::vector<float> target[kNumDetectors], state[kNumDetectors];
 

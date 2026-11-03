@@ -23,6 +23,12 @@ constexpr int kNumNodes = rb::kNumBands + 2;
 struct NodeIds { String used, on, freq, gain, q, shape, place; };
 NodeIds nodeIds (int node);
 
+/** Parameter identifiers for one zone of the multiband mode, and for the
+    crossover above zone i. */
+struct ZoneIds { String on, gain, makeup, balance, solo; };
+ZoneIds zoneIds (int zone);
+String crossoverId (int crossover);
+
 /** The plugin instance: parameters in, a block through the suppressor, and a
     copy of what it saw for the editor to draw. It also keeps what is not a
     parameter: the two settings being compared, and the presets. */

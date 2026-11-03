@@ -136,6 +136,20 @@ ResoBoxEditor::ResoBoxEditor (ResoBoxProcessor& p)
     slotBButton.onClick = [this] { processor.switchToSlot (1); };
     copyButton.onClick = [this] { processor.copyToOtherSlot(); };
 
+    // The curve of points or the four zones: two halves of one switch too.
+    for (auto* b : { &eqButton, &multibandButton })
+        addAndMakeVisible (*b);
+
+    layoutAttachment = std::make_unique<ParameterAttachment> (*state.getParameter ("multiband"), [this] (float value)
+    {
+        eqButton.setToggleState (value < 0.5f, dontSendNotification);
+        multibandButton.setToggleState (value >= 0.5f, dontSendNotification);
+    });
+
+    eqButton.onClick = [this] { layoutAttachment->setValueAsCompleteGesture (0.0f); };
+    multibandButton.onClick = [this] { layoutAttachment->setValueAsCompleteGesture (1.0f); };
+    layoutAttachment->sendInitialUpdate();
+
     // Soft and hard are the two halves of one switch.
     for (auto* b : { &softButton, &hardButton })
         addAndMakeVisible (*b);
@@ -208,6 +222,8 @@ ResoBoxEditor::ResoBoxEditor (ResoBoxProcessor& p)
     describe ({ &deltaButton }, fr ("Delta : n'écouter que ce qui est retiré."));
     describe ({ &bypassButton }, fr ("Bypass. La latence est gardée : la piste ne se décale pas."));
 
+    describe ({ &eqButton }, fr ("EQ : la sensibilité se dessine avec des points - cloches, plateaux, low cut et high cut."));
+    describe ({ &multibandButton }, fr ("Multiband : le spectre est coupé en quatre bandes, chacune avec sa sensibilité, son makeup, sa balance, son bypass et son écoute seule. Les points de l'EQ sont gardés pour le retour."));
     describe ({ &softButton }, fr ("Soft : les coupes s'installent en douceur et, au plus, aplanissent un pic."));
     describe ({ &hardButton }, fr ("Hard : les coupes s'installent net et vont deux fois plus loin."));
     describe ({ &depth }, fr ("Depth : la part de ce qui dépasse du spectre qui est retirée. À 0, rien n'est touché. Cliquez sur la valeur pour la taper."));
@@ -589,6 +605,11 @@ void ResoBoxEditor::resized()
     presetNameEditor.setBounds (row);
 
     auto column = bounds.removeFromLeft (kColumnWidth).reduced (14, 16);
+
+    auto layout = column.removeFromTop (30);
+    eqButton.setBounds (layout.removeFromLeft (layout.getWidth() * 2 / 5).withTrimmedRight (3));
+    multibandButton.setBounds (layout.withTrimmedLeft (3));
+    column.removeFromTop (8);
 
     auto mode = column.removeFromTop (30);
     softButton.setBounds (mode.removeFromLeft (mode.getWidth() / 2).withTrimmedRight (3));

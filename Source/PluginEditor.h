@@ -99,6 +99,8 @@ private:
     TextButton deltaButton { "DELTA" }, bypassButton { "BYPASS" };
 
     // The column.
+    TextButton eqButton { "EQ" }, multibandButton { "MULTIBAND" };
+    std::unique_ptr<ParameterAttachment> layoutAttachment;
     TextButton softButton { "SOFT" }, hardButton { "HARD" };
     std::unique_ptr<ParameterAttachment> modeAttachment;
     Knob depth { "DEPTH" }, detail { "DETAIL" }, tilt { "TILT" }, attack { "ATTACK" }, release { "RELEASE" };

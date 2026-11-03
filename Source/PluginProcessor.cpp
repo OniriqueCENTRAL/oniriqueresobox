@@ -17,12 +17,24 @@ NodeIds nodeIds (int node)
              prefix + "place" };
 }
 
+ZoneIds zoneIds (int zone)
+{
+    const auto prefix = "z" + String (zone + 1) + "_";
+    return { prefix + "on", prefix + "gain", prefix + "makeup", prefix + "bal", prefix + "solo" };
+}
+
+String crossoverId (int crossover)
+{
+    return "x" + String (crossover + 1) + "_freq";
+}
+
 namespace
 {
     using Attributes = AudioParameterFloatAttributes;
 
     constexpr int kDefaultBands = 3;
     const float kBandHz[rb::kNumBands] = { 250.0f, 1000.0f, 4000.0f, 500.0f, 2000.0f, 8000.0f, 125.0f, 12000.0f };
+    const char* const kZoneNames[rb::kNumZones] = { "Low", "Low Mid", "High Mid", "High" };
 
     const Identifier kPresetProperty ("preset");
     const Identifier kSlotProperty ("slot");
@@ -34,7 +46,8 @@ namespace
         listened to and looked at, not what it does to the sound. */
     bool isStored (const String& id)
     {
-        return id != "bypass" && id != "delta" && id != "quality" && id != "lowlat" && id != "scale";
+        return id != "bypass" && id != "delta" && id != "quality" && id != "lowlat" && id != "scale"
+               && ! id.endsWith ("_solo");
     }
 
     /** A range that is even to the ear: each octave, or each doubling of a
@@ -170,6 +183,23 @@ namespace
             choice (ids.place, name + " Placement", { "Stereo", "Left", "Right", "Mid", "Side" }, 0);
         }
 
+        toggle ("multiband", "Multiband", defaults.multiband);
+
+        for (int i = 0; i < rb::kNumZones - 1; ++i)
+            number (crossoverId (i), "Crossover " + String (i + 1), logRange (20.0f, 20000.0f), defaults.crossoverHz[i], hertz());
+
+        for (int i = 0; i < rb::kNumZones; ++i)
+        {
+            const auto ids = zoneIds (i);
+            const auto name = String (kZoneNames[i]);
+
+            toggle (ids.on, name, true);
+            number (ids.gain, name + " Sensitivity", { -12.0f, 12.0f, 0.01f }, 0.0f, decibels());
+            number (ids.makeup, name + " Makeup", { 0.0f, 12.0f, 0.01f }, 0.0f, decibels());
+            number (ids.balance, name + " Balance", { -100.0f, 100.0f, 1.0f }, 0.0f, balance());
+            toggle (ids.solo, name + " Listen", false);
+        }
+
         number ("mix", "Mix", { 0.0f, 100.0f, 0.1f }, 100.0f, percent());
         number ("out", "Output", { -24.0f, 24.0f, 0.01f }, 0.0f, decibels());
         toggle ("autogain", "Auto Gain", false);
@@ -293,6 +323,20 @@ struct ResoBoxProcessor::Raw
             nodeShape[i] = isBand ? get (ids.shape) : nullptr;
             nodePlace[i] = isBand ? get (ids.place) : nullptr;
         }
+
+        multiband = get ("multiband");
+
+        for (int i = 0; i < rb::kNumZones - 1; ++i)
+            crossover[i] = get (crossoverId (i));
+
+        for (int i = 0; i < rb::kNumZones; ++i)
+        {
+            const auto ids = zoneIds (i);
+
+            zoneOn[i] = get (ids.on);            zoneGain[i] = get (ids.gain);
+            zoneMakeup[i] = get (ids.makeup);    zoneBalance[i] = get (ids.balance);
+            zoneSolo[i] = get (ids.solo);
+        }
     }
 
     std::atomic<float> *depth, *detail, *attack, *release, *hard, *tilt, *mode, *link, *balance,
@@ -300,6 +344,9 @@ struct ResoBoxProcessor::Raw
     std::atomic<float> *nodeUsed[kNumNodes], *nodeOn[kNumNodes], *nodeFreq[kNumNodes],
                        *nodeGain[kNumNodes], *nodeQ[kNumNodes], *nodeShape[kNumNodes],
                        *nodePlace[kNumNodes];
+    std::atomic<float> *multiband, *crossover[rb::kNumZones - 1];
+    std::atomic<float> *zoneOn[rb::kNumZones], *zoneGain[rb::kNumZones], *zoneMakeup[rb::kNumZones],
+                       *zoneBalance[rb::kNumZones], *zoneSolo[rb::kNumZones];
 };
 
 //==============================================================================
@@ -362,6 +409,20 @@ rb::Settings ResoBoxProcessor::readSettings() const noexcept
         s.bands[i].q = r.nodeQ[i]->load();
         s.bands[i].shape = (rb::BandShape) jlimit (0, rb::kNumBandShapes - 1, roundToInt (r.nodeShape[i]->load()));
         s.bands[i].placement = (rb::BandPlacement) jlimit (0, rb::kNumPlacements - 1, roundToInt (r.nodePlace[i]->load()));
+    }
+
+    s.multiband = r.multiband->load() > 0.5f;
+
+    for (int i = 0; i < rb::kNumZones - 1; ++i)
+        s.crossoverHz[i] = r.crossover[i]->load();
+
+    for (int i = 0; i < rb::kNumZones; ++i)
+    {
+        s.zones[i].on = r.zoneOn[i]->load() > 0.5f;
+        s.zones[i].gainDb = r.zoneGain[i]->load();
+        s.zones[i].makeupDb = r.zoneMakeup[i]->load();
+        s.zones[i].balance = r.zoneBalance[i]->load() * 0.01f;
+        s.zones[i].solo = r.zoneSolo[i]->load() > 0.5f;
     }
 
     s.mix = r.mix->load() * 0.01f;

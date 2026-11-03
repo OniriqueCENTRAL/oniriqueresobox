@@ -5,6 +5,7 @@
 //   resobox_snapshot out.png [width height]
 //   resobox_snapshot out.png --states    several nodes selected, a preset being named
 //   resobox_snapshot out.png --tip x y   the description shown for the control at that point
+//   resobox_snapshot out.png --multiband [listen]   the four zones, one of them open (and listened to)
 //   resobox_snapshot --selftest      the slots, the presets and the saved state, without a window
 #include "../Source/PluginEditor.h"
 #include "../Source/PluginProcessor.h"
@@ -22,7 +23,8 @@ constexpr int kBlock = 512;
     program. */
 struct Director final : juce::Timer
 {
-    Director (juce::File destination, int width, int height, bool states = false, juce::Point<int> tip = { -1, -1 })
+    Director (juce::File destination, int width, int height, bool states = false, juce::Point<int> tip = { -1, -1 },
+              bool multiband = false, bool listen = false)
         : file (std::move (destination)), showStates (states), tipAt (tip)
     {
         processor.reset (static_cast<onirique::ResoBoxProcessor*> (createPluginFilter()));
@@ -44,6 +46,18 @@ struct Director final : juce::Timer
         set ("hc_on", 1.0f);
         set ("hc_freq", 15000.0f);
 
+        if (multiband)
+        {
+            set ("multiband", 1.0f);
+            set ("x2_freq", 900.0f);
+            set ("z1_on", 0.0f);
+            set ("z2_gain", -5.0f);
+            set ("z3_gain", 7.5f);
+            set ("z3_makeup", 2.0f);
+            set ("z3_bal", -30.0f);
+            set ("z3_solo", listen ? 1.0f : 0.0f);
+        }
+
         signal = rbtest::makeResonantNoise (4.0, kSr, { { 240.0, 12.0, 2.5f }, { 1150.0, 20.0, 3.0f },
                                                          { 2900.0, 25.0, 4.0f }, { 3700.0, 30.0, 2.5f },
                                                          { 7200.0, 30.0, 3.0f } });
@@ -53,7 +67,10 @@ struct Director final : juce::Timer
 
         if (auto* resoBox = dynamic_cast<onirique::ResoBoxEditor*> (editor.get()))
         {
-            resoBox->getDisplay().select (2);
+            if (multiband)
+                resoBox->getDisplay().selectZone (2);
+            else
+                resoBox->getDisplay().select (2);
 
             if (showStates)
             {
@@ -160,6 +177,19 @@ int selfTest()
     processor->switchToSlot (1);
     check (get ("bypass") > 0.5f, "switching slots leaves bypass alone");
     set ("bypass", 0.0f);
+
+    // Multiband is a setting of the sound; listening to a zone is not.
+    set ("multiband", 1.0f);
+    set ("z3_gain", 6.0f);
+    set ("z3_solo", 1.0f);
+    processor->switchToSlot (0);
+    check (get ("multiband") < 0.5f && std::abs (get ("z3_gain")) < 0.01f && get ("z3_solo") > 0.5f,
+           "a slot keeps its own mode and zones, and listening stays as it was");
+    processor->switchToSlot (1);
+    check (get ("multiband") > 0.5f && std::abs (get ("z3_gain") - 6.0f) < 0.01f, "and the other slot has its own back");
+    set ("z3_solo", 0.0f);
+    set ("multiband", 0.0f);
+    set ("z3_gain", 0.0f);
 
     // The saved state carries both slots.
     juce::MemoryBlock saved;
@@ -294,12 +324,14 @@ int main (int argc, char** argv)
     const auto tip = argc > 4 && juce::String (argv[2]) == "--tip"
                          ? juce::Point<int> (juce::String (argv[3]).getIntValue(), juce::String (argv[4]).getIntValue())
                          : juce::Point<int> (-1, -1);
-    const auto sized = argc > 3 && tip.x < 0;
+    const auto multiband = argc > 2 && juce::String (argv[2]) == "--multiband";
+    const auto listen = multiband && argc > 3 && juce::String (argv[3]) == "listen";
+    const auto sized = argc > 3 && tip.x < 0 && ! multiband;
     const auto width = sized ? juce::String (argv[2]).getIntValue() : 1290;
     const auto height = sized ? juce::String (argv[3]).getIntValue() : 740;
 
     {
-        Director director (file, width, height, states, tip);
+        Director director (file, width, height, states, tip, multiband, listen);
         juce::MessageManager::getInstance()->runDispatchLoop();
     }
 

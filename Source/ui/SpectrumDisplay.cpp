@@ -47,6 +47,88 @@ namespace
 
         return path;
     }
+
+    /** Where an island goes: at the foot of the display, unless that is where
+        what it stands for is, and in the middle, clear of the readout in the
+        corner on its left. */
+    Point<int> islandPosition (Rectangle<float> plot, const Component& island, float handleY)
+    {
+        const auto atTop = handleY > plot.getCentreY() + plot.getHeight() * 0.12f;
+        const auto y = atTop ? plot.getY() + 10.0f : plot.getBottom() - (float) island.getHeight() - 10.0f;
+
+        const auto centred = plot.getCentreX() - (float) island.getWidth() * 0.5f;
+        const auto x = jmin (jmax (centred, plot.getX() + 236.0f), jmax (centred, plot.getRight() - (float) island.getWidth() - 66.0f));
+
+        return { roundToInt (x), roundToInt (y) };
+    }
+
+    /** The island's ground: smoked glass, lit along its top, ringed in its accent. */
+    void paintIsland (Graphics& g, Rectangle<float> body, Colour accent)
+    {
+        // What is under the island still shows through it.
+        g.setGradientFill (ColourGradient (Colour (0xb33a1820), 0.0f, body.getY(),
+                                           Colour (0xb3170709), 0.0f, body.getBottom(), false));
+        g.fillRoundedRectangle (body, 26.0f);
+
+        // A sheen along the top edge, as on glass lit from above.
+        g.setGradientFill (ColourGradient (Colour (0x1effffff), 0.0f, body.getY(),
+                                           Colours::transparentWhite, 0.0f, body.getY() + 34.0f, false));
+        g.fillRoundedRectangle (body, 26.0f);
+
+        g.setColour (accent.withAlpha (0.14f));
+        g.drawRoundedRectangle (body.expanded (1.0f), 27.0f, 3.0f);
+        g.setColour (accent.withAlpha (0.7f));
+        g.drawRoundedRectangle (body, 26.0f, 1.0f);
+    }
+
+    /** A handle on the display: a ring when it is bypassed, a halo when it is
+        selected or under the pointer. */
+    void paintHandle (Graphics& g, Rectangle<float> shape, float corner, Colour colour, bool on, bool selected, bool lit)
+    {
+        if (selected)
+        {
+            g.setColour (colour.withAlpha (0.22f));
+            g.fillRoundedRectangle (shape.expanded (6.0f), corner + 6.0f);
+            g.setColour (colour.withAlpha (0.8f));
+            g.drawRoundedRectangle (shape.expanded (4.0f), corner + 4.0f, 1.2f);
+        }
+        else if (lit)
+        {
+            g.setColour (colour.withAlpha (0.2f));
+            g.fillRoundedRectangle (shape.expanded (5.0f), corner + 5.0f);
+        }
+
+        g.setColour (Colour (0xff120607));
+        g.fillRoundedRectangle (shape.expanded (1.5f), corner + 1.5f);
+
+        if (on)
+        {
+            g.setColour (colour);
+            g.fillRoundedRectangle (shape, corner);
+            g.setColour (Colours::white.withAlpha (0.85f));
+            g.drawRoundedRectangle (shape, corner, 1.2f);
+        }
+        else
+        {
+            // Bypassed: the ring stays where it was, empty.
+            g.setColour (colour.withAlpha (0.6f));
+            g.drawRoundedRectangle (shape, corner, 1.4f);
+        }
+    }
+
+    /** A word in a small dark tag, over a handle. */
+    void paintTag (Graphics& g, const String& text, Point<float> centre, Colour colour)
+    {
+        const auto font = monoFont (10.0f).boldened();
+        const auto tag = Rectangle<float> (jmax (16.0f, GlyphArrangement::getStringWidth (font, text) + 8.0f), 14.0f)
+                             .withCentre (centre);
+
+        g.setColour (Colour (0xcc120607));
+        g.fillRoundedRectangle (tag, 4.0f);
+        g.setColour (colour);
+        g.setFont (font);
+        g.drawText (text, tag, Justification::centred, false);
+    }
 }
 
 Colour SpectrumDisplay::nodeColour (int node)
@@ -65,12 +147,23 @@ String SpectrumDisplay::nodeName (int node)
     return "BAND " + String (node + 1);
 }
 
+Colour SpectrumDisplay::zoneColour (int zone)
+{
+    return isPositiveAndBelow (zone, rb::kNumZones) ? kNodeColours[zone] : ember;
+}
+
+String SpectrumDisplay::zoneName (int zone)
+{
+    static const char* const names[] = { "LOW", "LOW MID", "HIGH MID", "HIGH" };
+    return isPositiveAndBelow (zone, rb::kNumZones) ? names[zone] : "";
+}
+
 //==============================================================================
 /** The small drawn buttons of the island. */
 class IconButton final : public Button
 {
 public:
-    enum class Icon { power, close, previous, next };
+    enum class Icon { power, close, previous, next, listen };
 
     explicit IconButton (Icon i) : Button ({}), icon (i) {}
 
@@ -126,6 +219,16 @@ public:
                 break;
             }
 
+            case Icon::listen:
+            {
+                // Headphones: the band over the top, a cup at each end.
+                const auto a = r * 0.42f;
+                const auto ear = centre.y + a * 0.15f;
+                p.addCentredArc (centre.x, ear, a, a, 0.0f, -MathConstants<float>::halfPi, MathConstants<float>::halfPi, true);
+                p.addRoundedRectangle (centre.x - a - 1.6f, ear, 3.2f, a * 0.85f, 1.2f);
+                p.addRoundedRectangle (centre.x + a - 1.6f, ear, 3.2f, a * 0.85f, 1.2f);
+                break;
+            }
         }
 
         g.setColour (colour);
@@ -347,20 +450,7 @@ public:
 
     void paint (Graphics& g) override
     {
-        // Smoked glass: what is under the island still shows through it.
-        g.setGradientFill (ColourGradient (Colour (0xb33a1820), 0.0f, body.getY(),
-                                           Colour (0xb3170709), 0.0f, body.getBottom(), false));
-        g.fillRoundedRectangle (body, 26.0f);
-
-        // A sheen along the top edge, as on glass lit from above.
-        g.setGradientFill (ColourGradient (Colour (0x1effffff), 0.0f, body.getY(),
-                                           Colours::transparentWhite, 0.0f, body.getY() + 34.0f, false));
-        g.fillRoundedRectangle (body, 26.0f);
-
-        g.setColour (accent.withAlpha (0.14f));
-        g.drawRoundedRectangle (body.expanded (1.0f), 27.0f, 3.0f);
-        g.setColour (accent.withAlpha (0.7f));
-        g.drawRoundedRectangle (body, 26.0f, 1.0f);
+        paintIsland (g, body, accent);
     }
 
     void resized() override
@@ -545,6 +635,168 @@ private:
 };
 
 //==============================================================================
+/** The island of a zone, in multiband: its switch, listening to it alone,
+    and its three dials, each following its parameter. */
+class SpectrumDisplay::ZonePanel final : public Component
+{
+public:
+    explicit ZonePanel (AudioProcessorValueTreeState& s) : state (s)
+    {
+        for (auto* b : { &power, &listen, &previous, &next })
+            addAndMakeVisible (*b);
+
+        power.onClick = [this] { flip (zoneIds (zone).on); };
+        listen.onClick = [this] { flip (zoneIds (zone).solo); };
+        previous.onClick = [this] { if (onStep != nullptr) onStep (-1); };
+        next.onClick = [this] { if (onStep != nullptr) onStep (1); };
+
+        caption.setJustificationType (Justification::centredLeft);
+        caption.setColour (Label::textColourId, haze);
+        number.setJustificationType (Justification::centred);
+        number.setColour (Label::textColourId, mist);
+
+        for (auto* l : { &caption, &number })
+        {
+            l->setInterceptsMouseClicks (false, false);
+            addAndMakeVisible (*l);
+        }
+
+        for (auto* k : { &gain, &makeup, &balance })
+        {
+            k->setCompact (true);
+            addAndMakeVisible (*k);
+        }
+
+        makeup.setDialInset (10);
+        balance.setDialInset (10);
+
+        setSize (528, 126);
+    }
+
+    void setZone (int z)
+    {
+        zone = z;
+        accent = zoneColour (z);
+
+        const auto ids = zoneIds (z);
+        gain.attach (state, ids.gain);
+        makeup.attach (state, ids.makeup);
+        balance.attach (state, ids.balance);
+
+        for (auto* b : { &power, &listen, &previous, &next })
+            b->accent = accent;
+
+        for (auto* k : { &gain, &makeup, &balance })
+            k->setAccent (accent);
+
+        caption.setText (zoneName (z).toLowerCase(), dontSendNotification);
+        number.setText (String (z + 1), dontSendNotification);
+
+        refresh();
+        repaint();
+    }
+
+    /** Follows the two switches, which automation or the display may have
+        moved; the dials follow by themselves. */
+    void refresh()
+    {
+        if (zone < 0)
+            return;
+
+        const auto ids = zoneIds (zone);
+        power.setToggleState (real (ids.on) > 0.5f, dontSendNotification);
+        listen.setToggleState (real (ids.solo) > 0.5f, dontSendNotification);
+    }
+
+    void paint (Graphics& g) override
+    {
+        paintIsland (g, body, accent);
+    }
+
+    void resized() override
+    {
+        body = getLocalBounds().toFloat().reduced (3.0f);
+
+        auto area = body.toNearestInt().reduced (16, 10);
+
+        auto left = area.removeFromLeft (96);
+        auto top = left.removeFromTop (28);
+        power.setBounds (top.removeFromLeft (28));
+        top.removeFromLeft (8);
+        listen.setBounds (top.removeFromLeft (28));
+        left.removeFromTop (45);
+        caption.setBounds (left.removeFromTop (16).withTrimmedLeft (4));
+
+        auto right = area.removeFromRight (80);
+        auto row = right.removeFromTop (28);
+        next.setBounds (row.removeFromRight (22));
+        number.setBounds (row.removeFromRight (26));
+        previous.setBounds (row.removeFromRight (22));
+
+        area.reduce (10, 0);
+
+        const auto side = area.getWidth() / 3;
+        gain.setBounds (area.removeFromLeft (side));
+        balance.setBounds (area.removeFromRight (side));
+        makeup.setBounds (area);
+    }
+
+    bool hitTest (int x, int y) override
+    {
+        return body.contains ((float) x, (float) y);
+    }
+
+    void mouseDown (const MouseEvent&) override {}
+    void mouseDoubleClick (const MouseEvent&) override {}
+
+    String descriptionAt (Point<int> p) const
+    {
+        const std::pair<const Component*, String> parts[] = {
+            { &power, fr ("Active ou coupe cette bande. Coupée, elle ne retire plus rien et ne rend plus de niveau.") },
+            { &listen, fr ("Écoute : n'entendre que cette bande, traitée. Plusieurs bandes peuvent s'écouter ensemble.") },
+            { &previous, fr ("Passe à la bande de gauche.") },
+            { &next, fr ("Passe à la bande de droite.") },
+            { &number, fr ("Le numéro de la bande, du grave vers l'aigu.") },
+            { &gain, fr ("Gain : de combien le suppresseur travaille plus fort (+) ou plus doucement (-) dans cette bande. Double-cliquez sur le nom pour taper une valeur.") },
+            { &makeup, fr ("Makeup : rend du niveau à cette bande, pour compenser ce que les coupes y ont retiré. Le delta n'en tient pas compte.") },
+            { &balance, fr ("Balance : épargne un canal dans cette bande - gauche ou droite, ou mid ou side selon le mode stéréo. Avec le link à 100 %, les deux canaux reprennent la coupe la plus profonde.") },
+            { &caption, fr ("La bande sélectionnée.") },
+        };
+
+        for (const auto& [component, text] : parts)
+            if (component->isVisible() && component->getBounds().contains (p))
+                return text;
+
+        return {};
+    }
+
+    std::function<void (int)> onStep;
+
+private:
+    float real (const String& id) const { return state.getRawParameterValue (id)->load(); }
+
+    void flip (const String& id)
+    {
+        if (auto* p = state.getParameter (id))
+        {
+            p->beginChangeGesture();
+            p->setValueNotifyingHost (p->getValue() > 0.5f ? 0.0f : 1.0f);
+            p->endChangeGesture();
+        }
+    }
+
+    AudioProcessorValueTreeState& state;
+    Colour accent { ember };
+    Rectangle<float> body;
+    int zone = -1;
+
+    using Icon = IconButton::Icon;
+    IconButton power { Icon::power }, listen { Icon::listen }, previous { Icon::previous }, next { Icon::next };
+    Label caption, number;
+    Knob gain { "GAIN" }, makeup { "MAKEUP" }, balance { "BAL" };
+};
+
+//==============================================================================
 SpectrumDisplay::SpectrumDisplay (ResoBoxProcessor& p)
     : processor (p)
 {
@@ -552,6 +804,11 @@ SpectrumDisplay::SpectrumDisplay (ResoBoxProcessor& p)
     panel->onDelete = [this] { removeSelection(); };
     panel->onStep = [this] (int direction) { stepSelection (direction); };
     addChildComponent (*panel);
+
+    zonePanel = std::make_unique<ZonePanel> (processor.apvts);
+    zonePanel->onStep = [this] (int direction) { selectZone ((selectedZone + direction + rb::kNumZones) % rb::kNumZones); };
+    addChildComponent (*zonePanel);
+    shownMultiband = isMultiband();
 
     // For the Delete key.
     setWantsKeyboardFocus (true);
@@ -566,6 +823,7 @@ void SpectrumDisplay::resized()
     plot = getLocalBounds().toFloat().withTrimmedLeft (40.0f).withTrimmedRight (42.0f)
                            .withTrimmedTop (14.0f).withTrimmedBottom (26.0f);
     placePanel();
+    placeZonePanel();
 }
 
 void SpectrumDisplay::timerCallback()
@@ -615,8 +873,20 @@ void SpectrumDisplay::timerCallback()
     if (gone)
         selectionChanged();
 
+    // Going from the curve to the zones, or back, closes the island of the
+    // one left behind.
+    if (isMultiband() != shownMultiband)
+    {
+        shownMultiband = isMultiband();
+        select (-1);
+        selectZone (-1);
+    }
+
     if (panel->isVisible())
         panel->refresh();
+
+    if (zonePanel->isVisible())
+        zonePanel->refresh();
 
     repaint();
 }
@@ -739,13 +1009,29 @@ String SpectrumDisplay::descriptionAt (Point<int> position) const
     if (panel->isVisible() && panel->getBounds().contains (position))
         return panel->descriptionAt (position - panel->getPosition());
 
+    if (zonePanel->isVisible() && zonePanel->getBounds().contains (position))
+        return zonePanel->descriptionAt (position - zonePanel->getPosition());
+
     if (scaleArea().contains (p))
         return fr ("Échelle de réduction : le nombre de dB que représente la hauteur de l'écran, sur l'axe de droite. Cliquez pour la changer.");
 
     if (Rectangle<float> (104.0f, 22.0f).withPosition (plot.getRight() - 114.0f, plot.getY() + 10.0f).contains (p))
         return fr ("GR : la coupe la plus profonde en ce moment, où qu'elle soit dans le spectre.");
 
-    const auto node = nodeAt (p);
+    if (isMultiband())
+    {
+        if (crossoverAt (p) >= 0)
+            return fr ("Séparation entre deux bandes : glissez-la vers la gauche ou la droite pour déplacer la frontière.");
+
+        const auto zone = zoneAt (p);
+
+        if (zone >= 0)
+            return fr ("Bande ") + String (zone + 1) + " (" + zoneName (zone).toLowerCase() + ")"
+                   + fr (" : glissez vers le haut ou le bas pour sa sensibilité, double-clic pour la bypasser, clic droit pour la remettre à zéro. "
+                         "Un clic ouvre ses réglages : makeup, balance et écoute seule.");
+    }
+
+    const auto node = isMultiband() ? -1 : nodeAt (p);
 
     if (node == kLowCutNode)
         return fr ("Low cut : rien n'est traité en dessous. Glissez pour le déplacer, double-cliquez pour le désactiver.");
@@ -821,8 +1107,20 @@ void SpectrumDisplay::selectionChanged()
             panel->setNodes (nodes, selected);
     }
 
-    panel->setVisible (! nodes.empty());
+    panel->setVisible (! nodes.empty() && ! isMultiband());
     placePanel();
+    repaint();
+}
+
+void SpectrumDisplay::selectZone (int zone)
+{
+    selectedZone = isPositiveAndBelow (zone, rb::kNumZones) && isMultiband() ? zone : -1;
+
+    if (selectedZone >= 0)
+        zonePanel->setZone (selectedZone);
+
+    zonePanel->setVisible (selectedZone >= 0);
+    placeZonePanel();
     repaint();
 }
 
@@ -845,16 +1143,148 @@ void SpectrumDisplay::placePanel()
     if (selected < 0 || plot.isEmpty())
         return;
 
-    // At the foot of the display, unless that is where the node is.
-    const auto node = nodePosition (selected, processor.readSettings());
-    const auto atTop = node.y > plot.getCentreY() + plot.getHeight() * 0.12f;
-    const auto y = atTop ? plot.getY() + 10.0f : plot.getBottom() - (float) panel->getHeight() - 10.0f;
+    panel->setTopLeftPosition (islandPosition (plot, *panel, nodePosition (selected, processor.readSettings()).y));
+}
 
-    // In the middle, but clear of the readout in the corner on its left.
-    const auto centred = plot.getCentreX() - (float) panel->getWidth() * 0.5f;
-    const auto x = jmin (jmax (centred, plot.getX() + 236.0f), jmax (centred, plot.getRight() - (float) panel->getWidth() - 66.0f));
+void SpectrumDisplay::placeZonePanel()
+{
+    if (selectedZone < 0 || plot.isEmpty())
+        return;
 
-    panel->setTopLeftPosition (roundToInt (x), roundToInt (y));
+    zonePanel->setTopLeftPosition (islandPosition (plot, *zonePanel, yForSensitivity (parameter (zoneIds (selectedZone).gain))));
+}
+
+//==============================================================================
+bool SpectrumDisplay::isMultiband() const
+{
+    return parameter ("multiband") > 0.5f;
+}
+
+float SpectrumDisplay::crossoverHz (int crossover) const
+{
+    return parameter (crossoverId (crossover));
+}
+
+int SpectrumDisplay::zoneAt (Point<float> p) const
+{
+    if (! plot.contains (p))
+        return -1;
+
+    // Counted rather than looked up in order: automation may have set the
+    // crossovers out of order, and the zones are taken in sorted order.
+    const auto hz = hzForX (p.x);
+    int zone = 0;
+
+    for (int i = 0; i < rb::kNumZones - 1; ++i)
+        zone += crossoverHz (i) < hz ? 1 : 0;
+
+    return zone;
+}
+
+int SpectrumDisplay::crossoverAt (Point<float> p) const
+{
+    if (p.y < plot.getY() || p.y > plot.getBottom())
+        return -1;
+
+    int best = -1;
+    float bestDistance = 6.0f;
+
+    for (int i = 0; i < rb::kNumZones - 1; ++i)
+    {
+        const auto distance = std::abs (xForHz (crossoverHz (i)) - p.x);
+
+        if (distance < bestDistance)
+        {
+            bestDistance = distance;
+            best = i;
+        }
+    }
+
+    return best;
+}
+
+Range<float> SpectrumDisplay::zoneSpan (int zone) const
+{
+    float edges[rb::kNumZones - 1];
+
+    for (int i = 0; i < rb::kNumZones - 1; ++i)
+        edges[i] = crossoverHz (i);
+
+    std::sort (std::begin (edges), std::end (edges));
+
+    return { zone == 0 ? plot.getX() : xForHz (edges[zone - 1]),
+             zone == rb::kNumZones - 1 ? plot.getRight() : xForHz (edges[zone]) };
+}
+
+void SpectrumDisplay::zoneMouseDown (const MouseEvent& e)
+{
+    if (scaleArea().contains (e.position))
+    {
+        showScaleMenu();
+        return;
+    }
+
+    const auto grabbed = crossoverAt (e.position);
+    const auto zone = grabbed < 0 ? zoneAt (e.position) : -1;
+
+    // A right click puts a zone back to the sensitivity of the rest.
+    if (e.mods.isPopupMenu())
+    {
+        if (zone >= 0)
+            changeParameter (zoneIds (zone).gain, 0.0f);
+
+        return;
+    }
+
+    dragOrigin = e.position;
+
+    if (grabbed >= 0)
+    {
+        draggingCrossover = grabbed;
+        dragStartValue = crossoverHz (grabbed);
+        gesture (crossoverId (grabbed), true);
+    }
+    else if (zone >= 0)
+    {
+        selectZone (zone);
+        draggingZone = zone;
+        dragStartValue = parameter (zoneIds (zone).gain);
+        gesture (zoneIds (zone).gain, true);
+    }
+}
+
+void SpectrumDisplay::zoneMouseDrag (const MouseEvent& e)
+{
+    if (draggingCrossover >= 0)
+    {
+        // A third of an octave from its neighbours at the closest, so that no
+        // zone can be closed up.
+        const auto i = draggingCrossover;
+        const auto low = i > 0 ? crossoverHz (i - 1) * 1.26f : kMinHz;
+        const auto high = i < rb::kNumZones - 2 ? crossoverHz (i + 1) / 1.26f : kMaxHz;
+        const auto wanted = dragStartValue * hzForX (e.position.x) / hzForX (dragOrigin.x);
+
+        setParameter (crossoverId (i), jlimit (low, jmax (low, high), wanted));
+    }
+    else if (draggingZone >= 0)
+    {
+        const auto lift = sensitivityForY (e.position.y) - sensitivityForY (dragOrigin.y);
+        setParameter (zoneIds (draggingZone).gain, jlimit (-12.0f, 12.0f, dragStartValue + lift));
+    }
+
+    repaint();
+}
+
+void SpectrumDisplay::zoneMouseUp()
+{
+    if (draggingCrossover >= 0)
+        gesture (crossoverId (draggingCrossover), false);
+
+    if (draggingZone >= 0)
+        gesture (zoneIds (draggingZone).gain, false);
+
+    draggingCrossover = draggingZone = -1;
+    placeZonePanel();
 }
 
 void SpectrumDisplay::addBand (Point<float> at)
@@ -943,6 +1373,12 @@ bool SpectrumDisplay::keyPressed (const KeyPress& key)
         return true;
     }
 
+    if (key == KeyPress::escapeKey && selectedZone >= 0)
+    {
+        selectZone (-1);
+        return true;
+    }
+
     return false;
 }
 
@@ -976,10 +1412,22 @@ void SpectrumDisplay::showScaleMenu()
 
 void SpectrumDisplay::mouseMove (const MouseEvent& e)
 {
-    const auto now = nodeAt (e.position);
-
     cursor = e.position;
     cursorInside = plot.contains (cursor);
+
+    if (isMultiband())
+    {
+        hoveredCrossover = crossoverAt (e.position);
+        hoveredZone = hoveredCrossover < 0 && ! scaleArea().contains (e.position) ? zoneAt (e.position) : -1;
+
+        setMouseCursor (hoveredCrossover >= 0 ? MouseCursor::LeftRightResizeCursor
+                        : hoveredZone >= 0    ? MouseCursor::UpDownResizeCursor
+                                              : MouseCursor::NormalCursor);
+        repaint();
+        return;
+    }
+
+    const auto now = nodeAt (e.position);
 
     if (now != hovered)
     {
@@ -992,7 +1440,7 @@ void SpectrumDisplay::mouseMove (const MouseEvent& e)
 
 void SpectrumDisplay::mouseExit (const MouseEvent&)
 {
-    hovered = -1;
+    hovered = hoveredZone = hoveredCrossover = -1;
     cursorInside = false;
     repaint();
 }
@@ -1000,6 +1448,12 @@ void SpectrumDisplay::mouseExit (const MouseEvent&)
 void SpectrumDisplay::mouseDown (const MouseEvent& e)
 {
     grabKeyboardFocus();
+
+    if (isMultiband())
+    {
+        zoneMouseDown (e);
+        return;
+    }
 
     const auto node = nodeAt (e.position);
 
@@ -1084,6 +1538,12 @@ void SpectrumDisplay::mouseDrag (const MouseEvent& e)
     cursor = e.position;
     cursorInside = plot.contains (cursor);
 
+    if (draggingZone >= 0 || draggingCrossover >= 0)
+    {
+        zoneMouseDrag (e);
+        return;
+    }
+
     if (framing)
     {
         frame = { dragOrigin, e.position };
@@ -1119,6 +1579,12 @@ void SpectrumDisplay::mouseDrag (const MouseEvent& e)
 
 void SpectrumDisplay::mouseUp (const MouseEvent&)
 {
+    if (draggingZone >= 0 || draggingCrossover >= 0)
+    {
+        zoneMouseUp();
+        return;
+    }
+
     if (framing)
     {
         framing = false;
@@ -1148,6 +1614,17 @@ void SpectrumDisplay::mouseDoubleClick (const MouseEvent& e)
     if (e.mods.isPopupMenu())
         return;
 
+    // On a zone: bypass it, or bring it back.
+    if (isMultiband())
+    {
+        const auto zone = crossoverAt (e.position) < 0 && ! scaleArea().contains (e.position) ? zoneAt (e.position) : -1;
+
+        if (zone >= 0)
+            changeParameter (zoneIds (zone).on, parameter (zoneIds (zone).on) > 0.5f ? 0.0f : 1.0f);
+
+        return;
+    }
+
     const auto node = nodeAt (e.position);
 
     // On a node: bypass it, or bring it back, and the rest of the selection
@@ -1167,6 +1644,10 @@ void SpectrumDisplay::mouseDoubleClick (const MouseEvent& e)
 
 void SpectrumDisplay::mouseWheelMove (const MouseEvent& e, const MouseWheelDetails& wheel)
 {
+    // A zone has no Q.
+    if (isMultiband())
+        return;
+
     auto node = nodeAt (e.position);
 
     if (node < 0)
@@ -1363,8 +1844,29 @@ void SpectrumDisplay::paintCurve (Graphics& g, const rb::Settings& settings)
         return path;
     };
 
-    // Each node first, on its own, as a tinted shape against the middle line.
-    for (int i = 0; i < kNumNodes; ++i)
+    // In multiband, each zone first: its column faintly, and a tinted block
+    // from the middle line to its height.
+    for (int z = 0; z < rb::kNumZones && settings.multiband; ++z)
+    {
+        const auto& zone = settings.zones[z];
+        const auto span = zoneSpan (z);
+        const auto colour = zoneColour (z);
+        const auto lit = z == selectedZone || z == hoveredZone || z == draggingZone;
+        const auto height = yForSensitivity (zone.gainDb);
+
+        g.setColour (colour.withAlpha (lit ? 0.07f : 0.035f));
+        g.fillRect (span.getStart(), plot.getY(), span.getLength(), plot.getHeight());
+
+        if (zone.on)
+        {
+            g.setColour (colour.withAlpha (lit ? 0.3f : 0.17f));
+            g.fillRect (Rectangle<float>::leftTopRightBottom (span.getStart(), jmin (height, zero), span.getEnd(), jmax (height, zero)));
+        }
+    }
+
+    // Otherwise each node first, on its own, as a tinted shape against the
+    // middle line.
+    for (int i = 0; i < kNumNodes && ! settings.multiband; ++i)
     {
         rb::Settings alone;
         alone.lowCutOn = alone.highCutOn = false;
@@ -1434,35 +1936,7 @@ void SpectrumDisplay::paintNodes (Graphics& g, const rb::Settings& settings)
                                  : Rectangle<float> (2.0f * kNodeRadius, 2.0f * kNodeRadius).withCentre (centre);
         const auto corner = isCut ? 4.5f : kNodeRadius;
 
-        if (isSelected (i))
-        {
-            g.setColour (colour.withAlpha (0.22f));
-            g.fillRoundedRectangle (shape.expanded (6.0f), corner + 6.0f);
-            g.setColour (colour.withAlpha (0.8f));
-            g.drawRoundedRectangle (shape.expanded (4.0f), corner + 4.0f, 1.2f);
-        }
-        else if (lit)
-        {
-            g.setColour (colour.withAlpha (0.2f));
-            g.fillRoundedRectangle (shape.expanded (5.0f), corner + 5.0f);
-        }
-
-        g.setColour (Colour (0xff120607));
-        g.fillRoundedRectangle (shape.expanded (1.5f), corner + 1.5f);
-
-        if (on)
-        {
-            g.setColour (colour);
-            g.fillRoundedRectangle (shape, corner);
-            g.setColour (Colours::white.withAlpha (0.85f));
-            g.drawRoundedRectangle (shape, corner, 1.2f);
-        }
-        else
-        {
-            // Bypassed: the ring stays where it was, empty.
-            g.setColour (colour.withAlpha (0.6f));
-            g.drawRoundedRectangle (shape, corner, 1.4f);
-        }
+        paintHandle (g, shape, corner, colour, on, isSelected (i), lit);
 
         // A band that is not for the whole picture says which part it is for.
         if (! isCut)
@@ -1471,16 +1945,61 @@ void SpectrumDisplay::paintNodes (Graphics& g, const rb::Settings& settings)
             const auto place = jlimit (0, 4, roundToInt (parameter (nodeIds (i).place)));
 
             if (place > 0)
-            {
-                const auto tag = Rectangle<float> (16.0f, 14.0f).withCentre ({ centre.x, centre.y - kNodeRadius - 12.0f });
-
-                g.setColour (Colour (0xcc120607));
-                g.fillRoundedRectangle (tag, 4.0f);
-                g.setColour (colour.withAlpha (on ? 1.0f : 0.6f));
-                g.setFont (monoFont (10.0f).boldened());
-                g.drawText (letters[place], tag, Justification::centred, false);
-            }
+                paintTag (g, letters[place], { centre.x, centre.y - kNodeRadius - 12.0f }, colour.withAlpha (on ? 1.0f : 0.6f));
         }
+    }
+}
+
+void SpectrumDisplay::paintZones (Graphics& g, const rb::Settings& settings)
+{
+    bool anySolo = false;
+
+    for (const auto& zone : settings.zones)
+        anySolo = anySolo || zone.solo;
+
+    for (int z = 0; z < rb::kNumZones; ++z)
+    {
+        const auto& zone = settings.zones[z];
+        const auto span = zoneSpan (z);
+        const auto colour = zoneColour (z);
+
+        // Listening to some zones dims the others.
+        if (anySolo && ! zone.solo)
+        {
+            g.setColour (Colour (0x8c000000));
+            g.fillRect (span.getStart(), plot.getY(), span.getLength(), plot.getHeight());
+        }
+
+        // The handle: a bar across the middle of the zone, at its height.
+        const Point<float> centre (span.getStart() + span.getLength() * 0.5f, yForSensitivity (zone.gainDb));
+        const auto bar = Rectangle<float> (jlimit (8.0f, 44.0f, span.getLength() - 16.0f), 9.0f).withCentre (centre);
+
+        paintHandle (g, bar, 4.5f, colour, zone.on, z == selectedZone, z == hoveredZone || z == draggingZone);
+
+        if (zone.solo)
+            paintTag (g, "SOLO", { centre.x, centre.y - 18.0f }, colour);
+    }
+
+    // The lines between zones, with a grip near the top and, while under the
+    // pointer, the frequency they stand at.
+    for (int i = 0; i < rb::kNumZones - 1; ++i)
+    {
+        const auto hz = crossoverHz (i);
+        const auto x = xForHz (hz);
+        const auto lit = i == hoveredCrossover || i == draggingCrossover;
+
+        g.setColour (Colours::white.withAlpha (lit ? 0.7f : 0.28f));
+        g.fillRect (x - (lit ? 1.0f : 0.5f), plot.getY(), lit ? 2.0f : 1.0f, plot.getHeight());
+
+        const auto grip = Rectangle<float> (9.0f, 22.0f).withCentre ({ x, plot.getY() + 20.0f });
+        g.setColour (Colour (0xff120607));
+        g.fillRoundedRectangle (grip.expanded (1.5f), 6.0f);
+        g.setColour (lit ? Colours::white : mist);
+        g.fillRoundedRectangle (grip, 4.5f);
+
+        if (lit)
+            paintTag (g, hz >= 1000.0f ? String (hz / 1000.0f, 2) + " kHz" : String (roundToInt (hz)) + " Hz",
+                      { x + 40.0f, plot.getY() + 20.0f }, mist);
     }
 }
 
@@ -1504,7 +2023,11 @@ void SpectrumDisplay::paint (Graphics& g)
         paintSpectrum (g);
         paintReduction (g);
         paintCurve (g, settings);
-        paintNodes (g, settings);
+
+        if (settings.multiband)
+            paintZones (g, settings);
+        else
+            paintNodes (g, settings);
 
         if (framing)
         {
@@ -1618,7 +2141,9 @@ void SpectrumDisplay::paint (Graphics& g)
 
         g.setColour (haze.withAlpha (0.55f));
         g.setFont (capsFont (9.0f));
-        g.drawText (used < rb::kNumBands ? "DOUBLE-CLICK: ADD   -   DEL: REMOVE" : "DEL: REMOVE THE SELECTION",
+        g.drawText (settings.multiband      ? "DRAG: SENSITIVITY   -   DOUBLE-CLICK: BYPASS"
+                    : used < rb::kNumBands ? "DOUBLE-CLICK: ADD   -   DEL: REMOVE"
+                                           : "DEL: REMOVE THE SELECTION",
                     foot, Justification::centredLeft, false);
     }
 }
