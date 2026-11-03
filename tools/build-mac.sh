@@ -24,8 +24,14 @@ if [ ! -d JUCE ]; then
 fi
 [ "$(git -C JUCE describe --tags 2>/dev/null)" = 9.0.3 ] || stop "JUCE/ n'est pas JUCE 9.0.3 : supprimez le dossier JUCE et relancez."
 
+# Xcode, as on the CI. On some Macs JUCE's juceaide, configured inside the Xcode
+# project, finds no compiler: the Makefiles then build the same thing.
 work=build/mac
-cmake -B "$work" -G Xcode -DRESOBOX_JUCE_DIR="$PWD/JUCE"
+if ! cmake -B "$work" -G Xcode -DRESOBOX_JUCE_DIR="$PWD/JUCE"; then
+    echo "Le générateur Xcode a échoué : compilation avec les Makefiles." >&2
+    work=build/mac-make
+    cmake -B "$work" -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DRESOBOX_JUCE_DIR="$PWD/JUCE"
+fi
 cmake --build "$work" --config Release --parallel
 ctest --test-dir "$work" -C Release --output-on-failure
 
