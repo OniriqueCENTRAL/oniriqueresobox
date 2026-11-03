@@ -39,6 +39,10 @@ Le plugin sort dans
 `build/OniriqueResoBox_artefacts/Release/VST3/ResoBox.vst3` ; à copier dans
 `C:\Program Files\Common Files\VST3`.
 
+Sur un Mac, quand GitHub n'a pas de Mac libre pour la CI : `bash tools/build-mac.sh`
+compile comme elle (VST3 et AU universels, tests, auval) et dépose les deux zips
+sur la branche `ci-build-macOS`, comme elle.
+
 Outil de développement, sans hôte :
 
 ```bash
