@@ -5,6 +5,7 @@
 
 #include "License/LicenseGuard.h"
 #include "dsp/ResonanceSuppressor.h"
+#include "ui/OniriquePresets.h"
 
 namespace onirique
 {
@@ -103,6 +104,15 @@ public:
     static File getUserPresetFolder();
 
     AudioProcessorValueTreeState apvts;
+
+
+    /** Les presets d'usine et ceux de l'utilisateur, la comparaison A/B : ce que montre la barre « Nuit » du haut.
+
+        Mêmes fichiers (Onirique/ResoBox/Presets) et même état enregistré qu'avant. */
+
+    PresetBank presets { apvts, "ResoBox", nuitStock(), {} };
+
+    std::vector<PresetBank::Stock> nuitStock() const;
 
 private:
     void handleAsyncUpdate() override;
