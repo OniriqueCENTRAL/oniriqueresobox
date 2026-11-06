@@ -5,10 +5,10 @@
 #include <atomic>
 
 //==============================================================================
-//  La couleur de l'interface (menu ⋯ → INTERFACE COLOUR), la même dans tous les plugins ONIRIQUE : la teinte choisie
+//  La couleur de l'interface (menu ⋯ → INTERFACE COLOUR), propre à chaque plugin ONIRIQUE : la teinte choisie
 //  remplace la braise partout (potards, verre allumé, lueurs, courbes), avec ses dérivées (claire, profonde, rose).
-//  Elle est gardée dans AppData/Onirique/interface-colour.txt : un choix dans un plugin s'applique aux autres (relu une
-//  fois par seconde par chaque fenêtre ouverte, poll()).
+//  Elle est gardée dans AppData/Onirique/interface-colour-<PLUGIN>.txt : un choix vaut pour toutes les fenêtres de ce
+//  plugin (relu une fois par seconde par chaque fenêtre ouverte, poll()), pas pour les autres plugins.
 //
 //  Ce fichier se copie tel quel dans chaque plugin, à côté d'OniriqueBar.h.
 //==============================================================================
@@ -28,7 +28,13 @@ inline juce::int64 seenStamp = 0;
 
 inline juce::File file()
 {
-    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile ("Onirique/interface-colour.txt");
+    // une couleur par plugin : chaque plugin ONIRIQUE garde la sienne (toutes ses fenêtres ouvertes la suivent)
+    const auto folder = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile ("Onirique");
+   #ifdef JucePlugin_Name
+    return folder.getChildFile ("interface-colour-" + juce::File::createLegalFileName (JucePlugin_Name) + ".txt");
+   #else
+    return folder.getChildFile ("interface-colour.txt");
+   #endif
 }
 
 inline void apply (juce::Colour c)

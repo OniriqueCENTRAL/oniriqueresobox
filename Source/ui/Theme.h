@@ -57,6 +57,7 @@ class OniriqueLookAndFeel final : public juce::LookAndFeel_V4
 {
 public:
     OniriqueLookAndFeel();
+    void applyColours();   // rappelée quand la couleur de l'interface change
 
     void drawRotarySlider (juce::Graphics&, int x, int y, int width, int height,
                            float sliderPos, float rotaryStartAngle, float rotaryEndAngle,

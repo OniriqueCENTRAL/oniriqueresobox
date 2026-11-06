@@ -5,7 +5,7 @@
 
 //==============================================================================
 //  Le bouton ⋯ des plugins ONIRIQUE qui n'ont pas la barre commune (OniriqueBar.h) : il ouvre INTERFACE COLOUR, les mêmes
-//  8 teintes que le menu de la barre. Le choix est gardé pour tous les plugins (OniriqueTheme.h) ; la fenêtre se redessine
+//  8 teintes que le menu de la barre. Le choix est gardé pour ce plugin (OniriqueTheme.h) ; la fenêtre se redessine
 //  dans son minuteur (onirique::look::changedSince).
 //==============================================================================
 namespace onirique::look
