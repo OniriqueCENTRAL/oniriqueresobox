@@ -2,6 +2,7 @@
 
 #include <OniriqueLicenseData.h>
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "OniriqueTheme.h"
 
 //==============================================================================
 //  Ce qu'il faut de la charte ONIRIQUE pour dessiner la pastille et la page
@@ -12,12 +13,12 @@ namespace onirique::license::theme
 
 namespace palette
 {
-    inline const juce::Colour deep     { 0xff1a080a };
-    inline const juce::Colour deep2    { 0xff2a0a0e };
+    inline const juce::Colour& deep  = onirique::look::deepTint;    // teintés par la couleur de l'interface
+    inline const juce::Colour& deep2 = onirique::look::deepTint2;
     inline const juce::Colour mist     { 0xfff6eeee };
     inline const juce::Colour haze     { 0xffa88f92 };
-    inline const juce::Colour ember    { 0xffe23444 };
-    inline const juce::Colour emberHot { 0xffff5a68 };
+    inline const juce::Colour& ember    = onirique::look::emberBar;
+    inline const juce::Colour& emberHot = onirique::look::emberLit;
     inline const juce::Colour bone     { 0xffffecee };
     inline const juce::Colour rose     { 0xffffd2d6 };
     inline const juce::Colour active   { 0xff6fdc9c }; // le témoin « ACTIVÉ »

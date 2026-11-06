@@ -343,6 +343,14 @@ void ResoBoxEditor::deleteClicked()
 
 void ResoBoxEditor::timerCallback()
 {
+    // la couleur de l'interface (menu ⋯, ou changée dans un autre plugin ONIRIQUE) : tout se redessine
+    if (onirique::look::changedSince (themeSeen))
+    {
+        daBackdrop = {};
+        daBackdrop = {};
+        std::function<void (juce::Component&)> all = [&all] (juce::Component& k) { k.repaint(); for (auto* ch : k.getChildren()) all (*ch); };
+        all (*this);
+    }
     // What a preset, the other slot or the host may have changed under us.
     const auto name = processor.getPresetName();
     const auto index = presetNames.indexOf (name);
@@ -466,9 +474,9 @@ void ResoBoxEditor::paintHeader (Graphics& g, Rectangle<int> header)
 
     // The crimson of the range: darkest at the sigil, brightest behind the
     // name, and falling away again to the right and towards the foot.
-    ColourGradient ground (Colour (0xff2c060b), 0.0f, 0.0f, Colour (0xff3b080e), area.getRight(), 0.0f, false);
-    ground.addColour (0.32, Colour (0xff7a0e1c));
-    ground.addColour (0.7, Colour (0xff5a0a14));
+    ColourGradient ground (onirique::look::tint (0xff2c060b), 0.0f, 0.0f, onirique::look::tint (0xff3b080e), area.getRight(), 0.0f, false);
+    ground.addColour (0.32, onirique::look::tint (0xff7a0e1c));
+    ground.addColour (0.7, onirique::look::tint (0xff5a0a14));
     g.setGradientFill (ground);
     g.fillRect (area);
 
@@ -541,7 +549,9 @@ void ResoBoxEditor::paintHeader (Graphics& g, Rectangle<int> header)
 
 void ResoBoxEditor::paint (Graphics& g)
 {
-    g.fillAll (night);
+    if (daBackdrop.getWidth() != getWidth() || daBackdrop.getHeight() != getHeight())
+        daBackdrop = onirique::da::backdrop (getWidth(), getHeight(), (float) getWidth() / 1100.0f);
+    g.drawImageAt (daBackdrop, 0, 0);
 
     paintHeader (g, getLocalBounds().removeFromTop (kHeaderHeight));
 
@@ -549,7 +559,7 @@ void ResoBoxEditor::paint (Graphics& g)
     auto body = getLocalBounds().withTop (kHeaderHeight);
     const auto column = body.removeFromLeft (kColumnWidth);
 
-    g.setColour (deep);
+    g.setColour (deep.withAlpha (0.55f));   // verre sombre : le fond de VOCALBOX passe au travers
     g.fillRect (column);
     g.setColour (line);
     g.drawVerticalLine (column.getRight(), (float) column.getY(), (float) column.getBottom());
@@ -565,12 +575,17 @@ void ResoBoxEditor::paint (Graphics& g)
 
 void ResoBoxEditor::resized()
 {
+    if (themeButton.getParentComponent() == nullptr) addAndMakeVisible (themeButton);
     auto bounds = getLocalBounds();
     auto header = bounds.removeFromTop (kHeaderHeight);
 
     // Controls sit in the upper part of the header, clear of the light that
     // runs along its foot.
     auto row = header.withTrimmedBottom (6).withSizeKeepingCentre (header.getWidth(), 30).withTrimmedRight (14);
+
+    themeButton.setBounds (row.removeFromRight (38));
+
+    row.removeFromRight (8);
 
     bypassButton.setBounds (row.removeFromRight (100));
     row.removeFromRight (8);

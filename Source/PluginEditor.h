@@ -2,6 +2,8 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "../License/OniriqueThemeButton.h"
+#include "ui/OniriqueDA.h"
 
 #include "License/LicenseOverlay.h"
 #include "PluginProcessor.h"
@@ -124,6 +126,12 @@ private:
 
     // Last, so that it is destroyed first and drawn over everything else.
     std::unique_ptr<license::Overlay> licenseOverlay;
+
+    onirique::look::ThemeButton themeButton;   // ⋯ : la couleur de l'interface
+
+    int themeSeen = -1;
+
+    juce::Image daBackdrop;   // le fond de VOCALBOX, calculé une fois par taille
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ResoBoxEditor)
 };

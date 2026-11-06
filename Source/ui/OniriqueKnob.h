@@ -3,16 +3,14 @@
 #include <juce_graphics/juce_graphics.h>
 
 //==============================================================================
-//  Le potard ONIRIQUE, le même dans tous les plugins de la marque.
+//  Le potard ONIRIQUE « GRADUATIONS » (nouvelle DA, celle de VOCALBOX), le même dans tous les plugins de la marque.
 //
-//  - Une couronne de graduations, qui s'allument de l'origine jusqu'à la valeur (depuis le milieu pour un
-//    réglage bipolaire) : la position se lit d'un coup d'œil, même de loin.
-//  - Un corps sombre, biseauté, au bord finement strié, éclairé d'en haut à gauche.
-//  - Une aiguille effilée, de la couleur du réglage vers l'os pâle, et l'étoile à quatre branches
-//    d'ONIRIQUE à sa pointe ; la même étoile, gravée, au cœur du potard.
+//  - 21 repères autour (un grand tous les 5) qui s'allument en braise jusqu'à la valeur (depuis le milieu pour un
+//    réglage bipolaire) ; les autres restent en trait pâle. Pas de pavé ni de halo carré : seulement le trait.
+//  - Un capuchon mat (dégradé sombre du haut vers le bas), liseré rosé, ombre douce dessous.
+//  - Un trait blanc pour la position. Au survol, une lueur braise très douce autour du capuchon.
 //
-//  Ce fichier se copie tel quel dans Source/ui/ de chaque plugin ONIRIQUE, et ne se modifie qu'ici
-//  (plugin-ui/ du dépôt ONIRIQUE CENTRAL). Les plugins des partenaires (ABRASION, RELIC) gardent leur propre style.
+//  Ce fichier se copie tel quel dans chaque plugin ONIRIQUE (sauf RELIC et BLOOM), et ne se modifie qu'à un endroit.
 //
 //      onirique::ui::drawKnob (g, zone, position, angleDebut, angleFin, accent, bipolaire, survolé);
 //==============================================================================
@@ -20,7 +18,7 @@ namespace onirique::ui
 {
 
 /** L'étoile à quatre branches d'ONIRIQUE, centrée en `c`, de rayon `r`. */
-inline juce::Path starPath (juce::Point<float> c, float r)
+inline juce::Path knobStar (juce::Point<float> c, float r)
 {
     juce::Path p;
     const float w = r * 0.085f;
@@ -39,118 +37,57 @@ inline void drawKnob (juce::Graphics& g, juce::Rectangle<float> area, float posi
                       juce::Colour accent, bool bipolar, bool hover)
 {
     using namespace juce;
+    const float d = jmin (area.getWidth(), area.getHeight());
+    if (d < 8.0f) return;
+    const auto c = area.getCentre();
+    const float pos = jlimit (0.0f, 1.0f, position);
+    const float from = bipolar ? 0.5f : 0.0f;
+    const float lo = jmin (from, pos), hi = jmax (from, pos);
+    const bool small = d < 48.0f;
 
-    const auto size = jmin (area.getWidth(), area.getHeight());
-    if (size < 8.0f)
-        return;
-
-    const auto centre = area.getCentre();
-    const float R = size * 0.5f - 1.0f;
-    const float angle = startAngle + jlimit (0.0f, 1.0f, position) * (endAngle - startAngle);
-    const auto at = [centre] (float a, float r) { return Point<float> (centre.x + r * std::sin (a), centre.y - r * std::cos (a)); };
-
-    const auto bone = Colour (0xffffecee), hot = accent.brighter (0.35f);
-    const float origin = bipolar ? (startAngle + endAngle) * 0.5f : startAngle;
-    const float lo = jmin (origin, angle), hi = jmax (origin, angle);
-    const bool small = size < 62.0f;
-
-    // Graduations : 40 intervalles (20 sur un petit potard), un trait majeur tous les cinq.
-    const int count = small ? 20 : 40;
-    const float tickLong = jmax (4.0f, size * 0.075f), tickShort = tickLong * 0.62f;
+    // ---- les repères : 21 (11 sur un petit potard), un grand tous les 5
+    const int count = small ? 10 : 20;
     for (int i = 0; i <= count; ++i)
     {
-        const float a = startAngle + (float) i / (float) count * (endAngle - startAngle);
-        const bool major = i % 5 == 0;
-        const bool lit = hi - lo > 0.001f && a >= lo - 1.0e-4f && a <= hi + 1.0e-4f;
-        Line<float> tick (at (a, R - (major ? tickLong : tickShort)), at (a, R));
-
-        if (lit)
-        {
-            // Plus vif près de l'aiguille, plus doux vers l'origine.
-            const float t = (a - lo) / jmax (1.0e-4f, hi - lo);
-            const float near = bipolar && angle < origin ? 1.0f - t : t;
-            g.setColour (accent.withAlpha (0.18f));
-            g.drawLine (tick, major ? 4.6f : 3.6f);
-            g.setColour ((near > 0.85f ? hot : accent).withAlpha (0.55f + 0.45f * near));
-            g.drawLine (tick, major ? 2.0f : 1.5f);
-        }
-        else
-        {
-            g.setColour (Colour (0xffffd2d6).withAlpha (major ? 0.30f : 0.13f));
-            g.drawLine (tick, major ? 1.5f : 1.0f);
-        }
+        const float t = (float) i / (float) count, a = startAngle + (endAngle - startAngle) * t;
+        const bool big = small ? (i % 5 == 0) : (i % 5 == 0);
+        const bool lit = t >= lo - 1.0e-4f && t <= hi + 1.0e-4f && (hi - lo > 0.002f || std::abs (t - from) < 1.0e-4f);
+        const float r0 = d * (big ? 0.385f : 0.415f), r1 = d * 0.475f;
+        Path p;
+        p.startNewSubPath (c.x + r0 * std::sin (a), c.y - r0 * std::cos (a));
+        p.lineTo (c.x + r1 * std::sin (a), c.y - r1 * std::cos (a));
+        g.setColour (lit ? accent : Colour (255, 236, 238).withAlpha (0.18f));
+        g.strokePath (p, PathStrokeType (jmax (1.0f, d * (big ? 0.024f : 0.016f)), PathStrokeType::curved, PathStrokeType::rounded));
     }
 
-    // Le corps : une ombre portée, un biseau éclairé d'en haut, puis la face.
-    const float body = R - tickLong - jmax (3.0f, size * 0.035f);
-    g.setColour (Colours::black.withAlpha (0.55f));
-    g.fillEllipse (Rectangle<float> (2.0f * (body + 1.0f), 2.0f * (body + 1.0f)).withCentre (centre.translated (0.0f, 2.0f)));
-
-    g.setGradientFill (ColourGradient (Colour (0xff5a3439), centre.x, centre.y - body, Colour (0xff070304), centre.x, centre.y + body, false));
-    g.fillEllipse (Rectangle<float> (2.0f * body, 2.0f * body).withCentre (centre));
-
-    const float face = body - jmax (2.0f, size * 0.027f);
-    const auto faceBounds = Rectangle<float> (2.0f * face, 2.0f * face).withCentre (centre);
-    ColourGradient shade (Colour (0xff3b2226), centre.x - face * 0.35f, centre.y - face * 0.45f,
-                          Colour (0xff0b0506), centre.x + face * 0.65f, centre.y + face * 0.55f, true);
-    shade.addColour (0.55, Colour (0xff170a0c));
-    g.setGradientFill (shade);
-    g.fillEllipse (faceBounds);
-
-    // Le bord de la face, finement strié : plus clair en haut à gauche.
-    if (! small)
+    // ---- le capuchon : lueur de survol, ombre douce, dégradé mat, liseré
+    const float br = d * 0.32f;
+    const auto cap = Rectangle<float> (2.0f * br, 2.0f * br).withCentre (c);
+    if (hover)
+        for (int q = 3; q >= 1; --q)
+        {
+            g.setColour (accent.withAlpha (0.07f / (float) q));
+            g.fillEllipse (cap.expanded (d * 0.025f * (float) q));
+        }
+    for (int q = 3; q >= 1; --q)
     {
-        for (int i = 0; i < 48; ++i)
-        {
-            const float a = (float) i / 48.0f * MathConstants<float>::twoPi;
-            const float light = jmax (0.0f, -std::cos (a + 0.6f));
-            g.setColour (Colour (0xffffdce0).withAlpha (0.05f + 0.05f * light));
-            g.drawLine (Line<float> (at (a, face - jmax (2.5f, face * 0.07f)), at (a, face - 0.8f)), 1.0f);
-        }
+        g.setColour (Colours::black.withAlpha (0.16f));
+        g.fillEllipse (cap.translated (0.0f, d * 0.025f).expanded (d * 0.01f * (float) q));
     }
-    g.setColour (Colour (0xffffd2d6).withAlpha (0.10f));
-    g.drawEllipse (faceBounds, 1.0f);
+    g.setGradientFill (ColourGradient (Colour (0xff1e1614), c.x, cap.getY(), Colour (0xff110b0c), c.x, cap.getBottom(), false));
+    g.fillEllipse (cap);
+    g.setColour (Colour (255, 220, 225).withAlpha (0.10f));
+    g.drawEllipse (cap.reduced (0.5f), jmax (0.8f, d * 0.006f));
+    g.setColour (Colours::white.withAlpha (0.05f));
+    g.drawEllipse (cap.reduced (d * 0.02f), jmax (0.6f, d * 0.005f));
 
-    // Le reflet, un voile clair qui s'efface vers le centre.
-    {
-        Graphics::ScopedSaveState state (g);
-        Path clip;
-        clip.addEllipse (faceBounds.reduced (1.0f));
-        g.reduceClipRegion (clip);
-        g.setGradientFill (ColourGradient (Colour (0xffffe1e4).withAlpha (hover ? 0.14f : 0.10f), centre.x - face, centre.y - face,
-                                           Colour (0x00ffe1e4), centre.x + face * 0.2f, centre.y + face * 0.2f, false));
-        g.fillRect (faceBounds);
-    }
-
-    // L'aiguille : une lame effilée, de la couleur du réglage vers l'os, avec sa lueur.
-    const float half = jmax (1.4f, face * 0.05f);
-    const auto tip = at (angle, face - jmax (3.0f, face * 0.09f));
-    const auto base = at (angle, face * 0.30f);
-    const auto side = at (angle - MathConstants<float>::halfPi, half) - centre;
-    Path blade;
-    blade.startNewSubPath (tip);
-    blade.lineTo (base + side);
-    blade.lineTo (base - side);
-    blade.closeSubPath();
-
-    DropShadow (accent.withAlpha (0.85f), jmax (4, roundToInt (face * (hover ? 0.22f : 0.16f))), {}).drawForPath (g, blade);
-    g.setGradientFill (ColourGradient (accent.withAlpha (0.4f), base, bone, tip, false));
-    g.fillPath (blade);
-
-    // L'étoile à la pointe, puis le cœur gravé.
-    const float starRadius = jmax (2.6f, face * 0.11f);
-    const auto spark = starPath (tip, starRadius);
-    DropShadow (hot, jmax (3, roundToInt (starRadius * 2.2f)), {}).drawForPath (g, spark);
-    g.setColour (Colour (0xfffff4f5));
-    g.fillPath (spark);
-
-    const float core = face * 0.2f;
-    g.setColour (Colour (0xff0a0405));
-    g.fillEllipse (Rectangle<float> (2.0f * core, 2.0f * core).withCentre (centre));
-    g.setColour (Colour (0xffffd2d6).withAlpha (0.12f));
-    g.drawEllipse (Rectangle<float> (2.0f * core, 2.0f * core).withCentre (centre), 1.0f);
-    g.setColour (accent.withAlpha (0.55f));
-    g.fillPath (starPath (centre, core * 0.66f));
+    // ---- le trait de position
+    const float a = startAngle + (endAngle - startAngle) * pos;
+    Path ptr;
+    ptr.startNewSubPath (c.x + d * 0.12f * std::sin (a), c.y - d * 0.12f * std::cos (a));
+    ptr.lineTo (c.x + d * 0.27f * std::sin (a), c.y - d * 0.27f * std::cos (a));
+    g.setColour (Colour (0xffF4ECEC));
+    g.strokePath (ptr, PathStrokeType (jmax (1.2f, d * 0.026f), PathStrokeType::curved, PathStrokeType::rounded));
 }
 
 } // namespace onirique::ui

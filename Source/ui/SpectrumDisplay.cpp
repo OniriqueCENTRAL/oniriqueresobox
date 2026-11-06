@@ -1,3 +1,16 @@
+#if __has_include ("ui/OniriqueTheme.h")
+ #include "ui/OniriqueTheme.h"
+#elif __has_include ("UI/OniriqueTheme.h")
+ #include "UI/OniriqueTheme.h"
+#elif __has_include ("OniriqueTheme.h")
+ #include "OniriqueTheme.h"
+#elif __has_include ("../License/OniriqueTheme.h")
+ #include "../License/OniriqueTheme.h"
+#elif __has_include ("../../License/OniriqueTheme.h")
+ #include "../../License/OniriqueTheme.h"
+#else
+ #include "License/OniriqueTheme.h"
+#endif
 #include "SpectrumDisplay.h"
 
 namespace onirique
@@ -22,6 +35,9 @@ namespace
                                              Colour (0xff58d5e3), Colour (0xffb6e35a), Colour (0xff6aa6ff),
                                              Colour (0xffff9248), Colour (0xffe77bff),
                                              Colour (0xffff7a66), Colour (0xff7fe0a8) };
+
+    // le coupe-bas (8) prend la couleur de l'interface, lue au moment du dessin
+    Colour nodeColourAt (int i) { return i == 8 ? onirique::look::tint (0xffff7a66) : kNodeColours[i]; }
 
     /** A curve through every point, with no corner at any of them. */
     Path curveThrough (const std::vector<Point<float>>& points)
@@ -133,7 +149,7 @@ namespace
 
 Colour SpectrumDisplay::nodeColour (int node)
 {
-    return isPositiveAndBelow (node, kNumNodes) ? kNodeColours[node] : ember;
+    return isPositiveAndBelow (node, kNumNodes) ? nodeColourAt (node) : ember;
 }
 
 String SpectrumDisplay::nodeName (int node)
@@ -149,7 +165,7 @@ String SpectrumDisplay::nodeName (int node)
 
 Colour SpectrumDisplay::zoneColour (int zone)
 {
-    return isPositiveAndBelow (zone, rb::kNumZones) ? kNodeColours[zone] : ember;
+    return isPositiveAndBelow (zone, rb::kNumZones) ? nodeColourAt (zone) : ember;
 }
 
 String SpectrumDisplay::zoneName (int zone)
@@ -2008,7 +2024,7 @@ void SpectrumDisplay::paint (Graphics& g)
     const auto bounds = getLocalBounds().toFloat().reduced (0.5f);
     const auto settings = processor.readSettings();
 
-    g.setGradientFill (ColourGradient (Colour (0xff24090d), 0.0f, bounds.getY(),
+    g.setGradientFill (ColourGradient (onirique::look::tint (0xff24090d), 0.0f, bounds.getY(),
                                        Colour (0xff0d0506), 0.0f, bounds.getBottom(), false));
     g.fillRoundedRectangle (bounds, 14.0f);
 

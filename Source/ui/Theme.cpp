@@ -8,6 +8,7 @@ using namespace juce;
 
 OniriqueLookAndFeel::OniriqueLookAndFeel()
 {
+    onirique::look::load();   // la couleur de l'interface choisie (avant de copier les couleurs)
     setColour (ResizableWindow::backgroundColourId, night);
     setColour (Label::textColourId, mist);
     setColour (ComboBox::backgroundColourId, Colour (0x59000000));
@@ -91,8 +92,8 @@ void OniriqueLookAndFeel::drawButtonBackground (Graphics& g, Button& button, con
         g.setColour (ember.withAlpha (0.18f));
         g.drawRoundedRectangle (bounds.expanded (2.0f), radius + 2.0f, 3.0f);
 
-        g.setGradientFill (ColourGradient (Colour (0xff6e0f1a), 0.0f, bounds.getY(),
-                                           Colour (0xff3a060c), 0.0f, bounds.getBottom(), false));
+        g.setGradientFill (ColourGradient (onirique::look::tint (0xff6e0f1a), 0.0f, bounds.getY(),
+                                           onirique::look::tint (0xff3a060c), 0.0f, bounds.getBottom(), false));
     }
     else
     {
@@ -277,7 +278,7 @@ void OniriqueLookAndFeel::drawLabel (Graphics& g, Label& label)
         const auto box = label.getLocalBounds().toFloat().reduced (0.5f);
         const auto corner = box.getHeight() * 0.5f;
 
-        g.setColour (Colour (0xff1c070b));
+        g.setColour (onirique::look::tint (0xff1c070b));
         g.fillRoundedRectangle (box, corner);
         g.setColour (ember.withAlpha (0.2f));
         g.drawRoundedRectangle (box.expanded (1.5f), corner + 1.5f, 3.0f);
@@ -359,7 +360,7 @@ void OniriqueLookAndFeel::drawTooltip (Graphics& g, const String& text, int widt
 {
     const auto bounds = Rectangle<float> (0.0f, 0.0f, (float) width, (float) height).reduced (0.5f);
 
-    g.setGradientFill (ColourGradient (Colour (0xff3d0911), 0.0f, 0.0f, Colour (0xff1c0508), 0.0f, (float) height, false));
+    g.setGradientFill (ColourGradient (onirique::look::tint (0xff3d0911), 0.0f, 0.0f, onirique::look::tint (0xff1c0508), 0.0f, (float) height, false));
     g.fillRoundedRectangle (bounds, 7.0f);
     g.setColour (ember.withAlpha (0.6f));
     g.drawRoundedRectangle (bounds, 7.0f, 1.0f);
