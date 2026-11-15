@@ -266,8 +266,19 @@ class SpectrumDisplay::NodePanel final : public Component
 public:
     explicit NodePanel (AudioProcessorValueTreeState& s) : state (s)
     {
-        for (auto* b : { &power, &close, &previous, &next })
+        for (auto* b : { &power, &listen, &close, &previous, &next })
             addAndMakeVisible (*b);
+
+        listen.onClick = [this]
+        {
+            if (bands.empty())
+                return;
+
+            const auto solo = real (nodeIds (bands.front()).solo) > 0.5f ? 0.0f : 1.0f;
+
+            for (const auto node : bands)
+                change (nodeIds (node).solo, solo);
+        };
 
         power.onClick = [this]
         {
@@ -376,7 +387,7 @@ public:
         const auto colour = nodeColour (primary);
         accent = colour;
 
-        for (auto* b : { &power, &close, &previous, &next })
+        for (auto* b : { &power, &listen, &close, &previous, &next })
             b->accent = colour;
 
         caption.setText (several ? "(multiple)" : nodeName (primary).toLowerCase(), dontSendNotification);
@@ -404,7 +415,7 @@ public:
 
         const auto hasBand = bandLead >= 0;
 
-        for (auto* c : std::initializer_list<Component*> { &shapeBox, &placeBox, &close })
+        for (auto* c : std::initializer_list<Component*> { &shapeBox, &placeBox, &close, &listen })
         {
             c->setEnabled (hasBand);
             c->setAlpha (hasBand ? 1.0f : 0.3f);
@@ -422,6 +433,7 @@ public:
             return;
 
         power.setToggleState (real (nodeIds (primary).on) > 0.5f, dontSendNotification);
+        listen.setToggleState (! bands.empty() && real (nodeIds (bands.front()).solo) > 0.5f, dontSendNotification);
 
         if (controls[1].lead >= 0)
         {
@@ -478,14 +490,17 @@ public:
         auto area = body.toNearestInt().reduced (16, 10);
 
         auto left = area.removeFromLeft (128);
-        power.setBounds (left.removeFromTop (28).removeFromLeft (28));
+        auto top = left.removeFromTop (28);
+        power.setBounds (top.removeFromLeft (28));
+        top.removeFromLeft (8);
+        listen.setBounds (top.removeFromLeft (28));
         left.removeFromTop (14);
         shapeBox.setBounds (left.removeFromTop (28));
         left.removeFromTop (3);
         caption.setBounds (left.removeFromTop (16).withTrimmedLeft (12));
 
         auto right = area.removeFromRight (128);
-        auto top = right.removeFromTop (28);
+        top = right.removeFromTop (28);
         close.setBounds (top.removeFromRight (28));
         top.removeFromRight (10);
         next.setBounds (top.removeFromRight (22));
@@ -521,6 +536,7 @@ public:
         const std::pair<const Component*, String> parts[] = {
             { &power, fr (several ? "Active ou coupe les points sélectionnés. Un point coupé garde sa place et ses réglages."
                                   : "Active ou coupe ce point. Coupé, il garde sa place et ses réglages.") },
+            { &listen, fr ("Écoute : n'entendre que ce qui passe sous cette bande, traité. Alt + clic sur un point fait de même. Plusieurs bandes peuvent s'écouter ensemble.") },
             { &shapeBox, fr ("Forme de la bande : une cloche, un plateau vers le grave (low shelf) ou vers l'aigu (high shelf), ou un plateau - une cloche au sommet plat et aux flancs raides.") },
             { &placeBox, fr ("Où la bande agit : toute l'image stéréo, la gauche, la droite, le centre (mid) ou les côtés (side). Sous une bande placée, le link se relâche.") },
             { &previous, fr ("Passe au point précédent de la courbe.") },
@@ -643,7 +659,7 @@ private:
     int primary = -1, shownShape = -1, shownPlace = -1;
 
     using Icon = IconButton::Icon;
-    IconButton power { Icon::power }, close { Icon::close }, previous { Icon::previous }, next { Icon::next };
+    IconButton power { Icon::power }, listen { Icon::listen }, close { Icon::close }, previous { Icon::previous }, next { Icon::next };
     ComboBox shapeBox, placeBox;
     Label caption, number;
     Knob freq { "FREQ" }, gain { "GAIN" }, q { "Q" };
@@ -1331,6 +1347,7 @@ void SpectrumDisplay::removeNode (int node)
         return;
 
     changeParameter (nodeIds (node).used, 0.0f);
+    changeParameter (nodeIds (node).solo, 0.0f);
     inSelection[(size_t) node] = false;
     selectionChanged();
 }
@@ -1343,6 +1360,7 @@ void SpectrumDisplay::removeSelection()
         if (inSelection[(size_t) i])
         {
             changeParameter (nodeIds (i).used, 0.0f);
+            changeParameter (nodeIds (i).solo, 0.0f);
             inSelection[(size_t) i] = false;
         }
     }
@@ -1490,6 +1508,18 @@ void SpectrumDisplay::mouseDown (const MouseEvent& e)
                 changeParameter (nodeIds (i).q, 1.0f);
             }
         }
+
+        return;
+    }
+
+    // Alt + click on a band: listen to it alone, with the rest of the selection.
+    if (e.mods.isAltDown() && isPositiveAndBelow (node, (int) rb::kNumBands))
+    {
+        const auto solo = parameter (nodeIds (node).solo) > 0.5f ? 0.0f : 1.0f;
+
+        for (const auto i : withSelection (node))
+            if (i < rb::kNumBands)
+                changeParameter (nodeIds (i).solo, solo);
 
         return;
     }
@@ -1962,6 +1992,9 @@ void SpectrumDisplay::paintNodes (Graphics& g, const rb::Settings& settings)
 
             if (place > 0)
                 paintTag (g, letters[place], { centre.x, centre.y - kNodeRadius - 12.0f }, colour.withAlpha (on ? 1.0f : 0.6f));
+
+            if (parameter (nodeIds (i).solo) > 0.5f)
+                paintTag (g, "SOLO", { centre.x, centre.y + kNodeRadius + 12.0f }, colour);
         }
     }
 }
@@ -2158,8 +2191,8 @@ void SpectrumDisplay::paint (Graphics& g)
         g.setColour (haze.withAlpha (0.55f));
         g.setFont (capsFont (9.0f));
         g.drawText (settings.multiband      ? "DRAG: SENSITIVITY   -   DOUBLE-CLICK: BYPASS"
-                    : used < rb::kNumBands ? "DOUBLE-CLICK: ADD   -   DEL: REMOVE"
-                                           : "DEL: REMOVE THE SELECTION",
+                    : used < rb::kNumBands ? "DOUBLE-CLICK: ADD   -   ALT-CLICK: SOLO   -   DEL: REMOVE"
+                                           : "ALT-CLICK: SOLO   -   DEL: REMOVE THE SELECTION",
                     foot, Justification::centredLeft, false);
     }
 }

@@ -39,6 +39,7 @@ struct Band
     float q = 1.0f;
     BandShape shape = BandShape::bell;
     BandPlacement placement = BandPlacement::both;
+    bool solo = false;          // heard on its own, whether on or bypassed
 };
 
 /** The height of one band's own curve at a frequency, in dB. */

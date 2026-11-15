@@ -454,6 +454,20 @@ int main()
         std::printf ("    delta while listening to the third zone, at 400 Hz: %+.1f dB\n", change);
         check (change < -40.0, "delta while listening is what is taken from that zone only");
 
+        // Out of multiband, a band listened to alone lets through what lies under it.
+        {
+            rb::Settings b;
+            b.depth = 8.0f;
+            const auto all = run (b, ringing);
+            b.bands[0] = { true, 3000.0f, 0.0f, 1.0f };
+            b.bands[0].solo = true;
+            const auto heard = run (b, ringing);
+            const auto under = bandDb (heard, 2900.0, 3100.0) - bandDb (all, 2900.0, 3100.0);
+            const auto far = bandDb (heard, 300.0, 500.0) - bandDb (all, 300.0, 500.0);
+            std::printf ("    listening to a band at 3 kHz: %+.2f dB at 3 kHz, %+.1f dB at 400 Hz\n", under, far);
+            check (std::abs (under) < 0.5 && far < -40.0, "listening to a band lets through that band, processed, and little else");
+        }
+
         // Makeup: level given back to one zone, never part of delta.
         s = {};
         s.multiband = true;

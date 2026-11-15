@@ -14,7 +14,7 @@ NodeIds nodeIds (int node)
 
     const auto prefix = "b" + String (node + 1) + "_";
     return { prefix + "used", prefix + "on", prefix + "freq", prefix + "gain", prefix + "q", prefix + "shape",
-             prefix + "place" };
+             prefix + "place", prefix + "solo" };
 }
 
 ZoneIds zoneIds (int zone)
@@ -181,6 +181,7 @@ namespace
             number (ids.q, name + " Q", logRange (0.3f, 8.0f), 1.0f, plain (2));
             choice (ids.shape, name + " Shape", { "Bell", "Low Shelf", "High Shelf", "Plateau" }, 0);
             choice (ids.place, name + " Placement", { "Stereo", "Left", "Right", "Mid", "Side" }, 0);
+            toggle (ids.solo, name + " Listen", false);
         }
 
         toggle ("multiband", "Multiband", defaults.multiband);
@@ -322,6 +323,7 @@ struct ResoBoxProcessor::Raw
             nodeQ[i] = isBand ? get (ids.q) : nullptr;
             nodeShape[i] = isBand ? get (ids.shape) : nullptr;
             nodePlace[i] = isBand ? get (ids.place) : nullptr;
+            nodeSolo[i] = isBand ? get (ids.solo) : nullptr;
         }
 
         multiband = get ("multiband");
@@ -343,7 +345,7 @@ struct ResoBoxProcessor::Raw
                        *mix, *out, *delta, *bypass, *sidechain, *quality, *lowLatency, *autoGain;
     std::atomic<float> *nodeUsed[kNumNodes], *nodeOn[kNumNodes], *nodeFreq[kNumNodes],
                        *nodeGain[kNumNodes], *nodeQ[kNumNodes], *nodeShape[kNumNodes],
-                       *nodePlace[kNumNodes];
+                       *nodePlace[kNumNodes], *nodeSolo[kNumNodes];
     std::atomic<float> *multiband, *crossover[rb::kNumZones - 1];
     std::atomic<float> *zoneOn[rb::kNumZones], *zoneGain[rb::kNumZones], *zoneMakeup[rb::kNumZones],
                        *zoneBalance[rb::kNumZones], *zoneSolo[rb::kNumZones];
@@ -409,6 +411,7 @@ rb::Settings ResoBoxProcessor::readSettings() const noexcept
         s.bands[i].q = r.nodeQ[i]->load();
         s.bands[i].shape = (rb::BandShape) jlimit (0, rb::kNumBandShapes - 1, roundToInt (r.nodeShape[i]->load()));
         s.bands[i].placement = (rb::BandPlacement) jlimit (0, rb::kNumPlacements - 1, roundToInt (r.nodePlace[i]->load()));
+        s.bands[i].solo = r.nodeUsed[i]->load() > 0.5f && r.nodeSolo[i]->load() > 0.5f;
     }
 
     s.multiband = r.multiband->load() > 0.5f;

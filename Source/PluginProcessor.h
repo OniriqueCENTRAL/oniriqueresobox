@@ -20,8 +20,8 @@ constexpr int kNumNodes = rb::kNumBands + 2;
 
 /** Parameter identifiers for one node. A bell that is not `used` is not on the
     curve at all; one that is used but not `on` is bypassed and keeps its
-    place. used, gain, q, shape and place are empty for the cuts, which are always there. */
-struct NodeIds { String used, on, freq, gain, q, shape, place; };
+    place. used, gain, q, shape, place and solo are empty for the cuts, which are always there. */
+struct NodeIds { String used, on, freq, gain, q, shape, place, solo; };
 NodeIds nodeIds (int node);
 
 /** Parameter identifiers for one zone of the multiband mode, and for the

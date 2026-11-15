@@ -289,7 +289,7 @@ void ResonanceSuppressor::setSettings (const Settings& s) noexcept
         const auto& a = s.bands[i];
         const auto& b = settings.bands[i];
         curveChanged = a.on != b.on || a.freq != b.freq || a.gainDb != b.gainDb || a.q != b.q || a.shape != b.shape
-                       || a.placement != b.placement;
+                       || a.placement != b.placement || a.solo != b.solo;
     }
 
     curveChanged = curveChanged || s.multiband != settings.multiband
@@ -372,10 +372,14 @@ void ResonanceSuppressor::updateWeights() noexcept
     // gives nothing back.
     bool anySolo = false;
 
-    for (const auto& zone : settings.zones)
-        anySolo = anySolo || zone.solo;
+    if (settings.multiband)
+        for (const auto& zone : settings.zones)
+            anySolo = anySolo || zone.solo;
+    else
+        for (const auto& band : settings.bands)
+            anySolo = anySolo || band.solo;
 
-    listening = settings.multiband && anySolo;
+    listening = anySolo;
 
     const int frameBins = fftSize / 2 + 1;
     const auto frameHz = (float) (sampleRate / (double) fftSize);
@@ -392,6 +396,11 @@ void ResonanceSuppressor::updateWeights() noexcept
             heard += zone.solo ? share : 0.0f;
             makeup += share * std::exp ((zone.on ? zone.makeupDb : 0.0f) * kLn10Over20);
         }
+
+        // Out of multiband, a soloed band lets through what lies under its own shape.
+        for (int b = 0; b < kNumBands && ! settings.multiband; ++b)
+            if (settings.bands[b].solo)
+                heard = std::max (heard, std::min (1.0f, bandShape (settings.bands[b], (float) k * frameHz)));
 
         zoneMask[(size_t) k] = listening ? heard : 1.0f;
         zoneMakeup[(size_t) k] = settings.multiband ? makeup : 1.0f;
