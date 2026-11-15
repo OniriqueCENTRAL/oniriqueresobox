@@ -567,8 +567,7 @@ void ResoBoxEditor::paint (Graphics& g)
     auto body = getLocalBounds().withTop (headerHeight());
     const auto column = body.removeFromLeft (kColumnWidth);
 
-    g.setColour (deep.withAlpha (0.55f));   // verre sombre : le fond de VOCALBOX passe au travers
-    g.fillRect (column);
+    // posé sur le fond : seul un trait sépare la colonne
     g.setColour (line);
     g.drawVerticalLine (column.getRight(), (float) column.getY(), (float) column.getBottom());
 

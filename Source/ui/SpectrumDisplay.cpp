@@ -2057,9 +2057,7 @@ void SpectrumDisplay::paint (Graphics& g)
     const auto bounds = getLocalBounds().toFloat().reduced (0.5f);
     const auto settings = processor.readSettings();
 
-    g.setGradientFill (ColourGradient (onirique::look::tint (0xff24090d), 0.0f, bounds.getY(),
-                                       Colour (0xff0d0506), 0.0f, bounds.getBottom(), false));
-    g.fillRoundedRectangle (bounds, 14.0f);
+    // posé sur le fond, sans cadre
 
     {
         Graphics::ScopedSaveState clip (g);
@@ -2089,8 +2087,6 @@ void SpectrumDisplay::paint (Graphics& g)
 
     g.setColour (Colour (0x33ffd2d6));
     g.drawRect (plot.expanded (0.5f), 1.0f);
-    g.setColour (line);
-    g.drawRoundedRectangle (bounds, 14.0f, 1.0f);
 
     // Frequencies along the foot.
     g.setFont (monoFont (10.0f));
